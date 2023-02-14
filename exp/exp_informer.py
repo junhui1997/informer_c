@@ -1,4 +1,4 @@
-from data.data_loader import Dataset_ETT_hour,Dataset_rob,Dataset_jigsaw
+from data.data_loader import Dataset_ETT_hour,Dataset_rob,Dataset_jigsaw,Dataset_jigsaw_g
 from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 
@@ -66,6 +66,9 @@ class Exp_Informer(Exp_Basic):
             'jigsaw_kt':Dataset_jigsaw,
             'jigsaw_np':Dataset_jigsaw,
             'jigsaw_su':Dataset_jigsaw,
+            'jigsaw_kt_g': Dataset_jigsaw_g,
+            'jigsaw_np_g': Dataset_jigsaw_g,
+            'jigsaw_su_g': Dataset_jigsaw_g,
 
         }
         # 注意data这里还没有完成实例化，完成实例化之后再调用instance

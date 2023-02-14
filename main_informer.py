@@ -70,13 +70,16 @@ data_parser = {
     'jigsaw_kt':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     'jigsaw_np':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     'jigsaw_su':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
+    'jigsaw_kt_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_np_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_su_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
 }
 
 if args.task in data_parser.keys():
     data_info = data_parser[args.task]
     args.folder_path = data_info['folder']
     args.enc_in = data_info['enc_in'] #这里是dimension不是seq_len,利用七个维度来进行预测
-    args.c_out = data_info['c_out']
+    args.c_out = data_info['c_out'] #c_out没有用，原本的用处是用来决定输出的维度
     args.num_classes = data_info['num_classes']
 
 args.s_layers = [int(s_l) for s_l in args.s_layers.replace(' ','').split(',')]
