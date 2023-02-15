@@ -17,6 +17,7 @@ import time
 import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import pandas as pd
+import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -156,7 +157,10 @@ class Exp_Informer(Exp_Basic):
         
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
-
+        self.all_train_loss = []
+        self.all_val_loss = []
+        self.all_test_loss =[]
+        self.all_accuracy = []
         best_accuracy = 0
 
         if self.args.use_amp:
@@ -201,11 +205,15 @@ class Exp_Informer(Exp_Basic):
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_loader, criterion)
             test_loss = self.vali(test_loader, criterion)
+            self.all_train_loss.append(train_loss)
+            self.all_val_loss.append(vali_loss)
+            self.all_test_loss.append(test_loss)
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
 
             current_accuray = self.vali_accuracy(vali_loader)
+            self.all_accuracy.append(current_accuray)
             print('current accuracy in Epoch: {0} is {1:.7f}'.format(epoch + 1, current_accuray))
             if current_accuray > best_accuracy:
                 best_accuracy = current_accuray
@@ -258,6 +266,24 @@ class Exp_Informer(Exp_Basic):
 
         print('test accuracy is ', acc)
         df.to_pickle(folder_path+'confusion_m.pkl')
+
+        # save loss plot
+        x = [i+1 for i in range(self.args.train_epochs)]
+        plt.plot(x, self.all_train_loss, label='train loss')
+        plt.plot(x, self.all_val_loss, label='val loss')
+        plt.plot(x, self.all_test_loss, label='test loss')
+        plt.legend(loc='upper right')
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        plt.savefig(folder_path+'loss.jpg')
+
+        # save accuracy plot
+        plt.clf()
+        plt.plot(x, self.all_accuracy, label='val accuracy')
+        plt.legend(loc='upper right')
+        plt.xlabel('epoch')
+        plt.ylabel('accuracy %')
+        plt.savefig(folder_path + 'accuracy.jpg')
 
         return
 

@@ -81,6 +81,8 @@ if args.task in data_parser.keys():
     args.enc_in = data_info['enc_in'] #这里是dimension不是seq_len,利用七个维度来进行预测
     args.c_out = data_info['c_out'] #c_out没有用，原本的用处是用来决定输出的维度
     args.num_classes = data_info['num_classes']
+else:
+    print('there is no such a predefined task')
 
 args.s_layers = [int(s_l) for s_l in args.s_layers.replace(' ','').split(',')]
 

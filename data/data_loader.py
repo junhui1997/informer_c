@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset, DataLoader
 # from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedKFold
 
 from utils.tools import StandardScaler
 from utils.timefeatures import time_features
@@ -281,7 +282,7 @@ class Dataset_jigsaw(Dataset):
         val_list = []
         label_list = []
         #四分之一的采样率
-        for i in range(0,df.shape[0]-self.seq_len,6):
+        for i in range(0, df.shape[0]-self.seq_len, 4):
             if df.iloc[i]['label'] != df.iloc[i+self.seq_len]['label']:
                 continue
             # 10是因为第11列开始才是有效数据，详情请看dataloader里面写的
@@ -354,6 +355,17 @@ class Dataset_jigsaw(Dataset):
     def get_class_name(self):
         return self.class_name
 
+def get_fold(df_kfold,folds,key_name):
+    kfolder = StratifiedKFold(n_splits=folds, shuffle=True, random_state=719)
+    df_kfold[key_name] = df_kfold[key_name].apply(str)
+    val_indices = [val_indices for _, val_indices in kfolder.split(df_kfold[key_name], df_kfold[key_name])]
+    df_kfold['fold'] = -1
+    #给每个都打上了fold index
+    for i, vi in enumerate(val_indices):
+        #print(i,vi)
+        folder_idx = df_kfold.index[vi]
+        df_kfold.loc[folder_idx,'fold'] = i
+    return df_kfold
 class Dataset_jigsaw_g(Dataset):
     def __init__(self, flag='train', size=48,
                  enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
@@ -396,15 +408,22 @@ class Dataset_jigsaw_g(Dataset):
             val_list.append(val)
             label_list.append(label)
         self.x_data_trn = pd.DataFrame({"value list": val_list, "gesture": label_list})
-        self.y_enc = self.enc.fit_transform(self.x_data_trn['gesture'])
+        self.enc.fit(self.x_data_trn['gesture'])
         self.class_name = self.enc.inverse_transform([i for i in range(len(self.x_data_trn['gesture'].unique()))])
 
     def __read_data__(self):
-
         # train val test 0.8:0.1:0.1
-        # vt:val&test
-        x_train, x_vt, y_train, y_vt = train_test_split(self.x_data_trn, self.y_enc, test_size=0.2)
-        x_val, x_test, y_val, y_test = train_test_split(x_vt, y_vt, test_size=0.5)
+        num_fold = 10
+        df_kflod = get_fold(self.x_data_trn, num_fold, 'gesture')
+        x_train = df_kflod.loc[(df_kflod['fold'] <= 7)]
+        x_test = df_kflod.loc[(df_kflod['fold'] == 8)]
+        x_val = df_kflod.loc[(df_kflod['fold'] == 9)]
+        y_train = self.enc.transform(x_train['gesture'])
+        y_test = self.enc.transform(x_test['gesture'])
+        y_val = self.enc.transform(x_val['gesture'])
+        # # vt:val&test
+        # x_train, x_vt, y_train, y_vt = train_test_split(self.x_data_trn, self.y_enc, test_size=0.2)
+        # x_val, x_test, y_val, y_test = train_test_split(x_vt, y_vt, test_size=0.5)
 
         # 在这里先没有考虑seq_len,对于这个数据集来说最长是128
         self.scale = False
