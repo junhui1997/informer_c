@@ -6,6 +6,7 @@ from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
 import numpy as np
+import seaborn as sns
 
 import torch
 import torch.nn as nn
@@ -275,7 +276,14 @@ class Exp_Informer(Exp_Basic):
             os.makedirs(folder_path)
 
         print('test accuracy is ', acc)
+        # save confusion matrix and the heat map
         df.to_csv(folder_path+'confusion_m.csv')
+        sns.heatmap(df, annot=True, cbar=None, cmap="YlGnBu", fmt="d")
+        plt.title("Confusion Matrix"), plt.tight_layout()
+        plt.xlabel("True Class"),
+        plt.ylabel("Predicted Class")
+        plt.savefig(folder_path+'confusion_matrix.png')
+        plt.clf()
 
         # save loss plot
         x = [i+1 for i in range(self.args.train_epochs)]
