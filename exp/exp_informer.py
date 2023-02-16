@@ -18,6 +18,8 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 import matplotlib.pyplot as plt
+from torchsummary import summary as summary_t
+from torchinfo import summary as summary_info
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -54,7 +56,15 @@ class Exp_Informer(Exp_Basic):
                 self.device,
                 self.args.num_classes
             ).float()
-        
+
+        #在这里model已经完成了实例化,batch_size是有一个输入的参数的
+        if self.args.model=='informer' and self.args.show_para:
+            summary_info(
+                model,
+                input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
+                col_names=["output_size", "num_params"],
+            )
+
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
@@ -265,7 +275,7 @@ class Exp_Informer(Exp_Basic):
             os.makedirs(folder_path)
 
         print('test accuracy is ', acc)
-        df.to_pickle(folder_path+'confusion_m.pkl')
+        df.to_csv(folder_path+'confusion_m.csv')
 
         # save loss plot
         x = [i+1 for i in range(self.args.train_epochs)]

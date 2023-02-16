@@ -398,8 +398,8 @@ class Dataset_jigsaw_g(Dataset):
         val_list = []
         label_list = []
         #四分之一的采样率
-        for i in range(0,df.shape[0]-self.seq_len,6):
-            if df.iloc[i]['gesture'] != df.iloc[i+self.seq_len]['gesture']:
+        for i in range(0, df.shape[0]-self.seq_len,6):
+            if df.iloc[i]['file_name'] != df.iloc[i+self.seq_len]['file_name']:
                 continue
             # 10是因为第11列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
