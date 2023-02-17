@@ -8,6 +8,8 @@ from models.decoder import Decoder, DecoderLayer
 from models.attn import FullAttention, ProbAttention, AttentionLayer
 from models.embed import DataEmbedding
 from models.classification_head import ClassificationHead
+from module_box.feature_extraction import cnn_feature
+from module_box.token_learner import token_learner
 
 """
     这里c_out决定了输出是多少
@@ -23,13 +25,18 @@ class ctt(nn.Module):
                  device=torch.device('cuda:0'), num_classes=1):
         super(ctt, self).__init__()
 
+        self.s = 8
+        self.cnn_feature = cnn_feature()
+        self.token_learner = token_learner(S=self.s)
+        self.device = device
+
         # attn这里是选择不同的attention，一共有两种一种是普通的attention一种是prob attention
         self.attn = attn
         # 是否输出encoder的注意力
         self.output_attention = output_attention
 
         # Encoding
-        self.enc_embedding = DataEmbedding(enc_in, d_model, embed, dropout)
+        self.enc_embedding = DataEmbedding(512, d_model, embed, dropout)
 
         # Attention
         Attn = ProbAttention if attn == 'prob' else FullAttention
@@ -64,11 +71,20 @@ class ctt(nn.Module):
         self.projection = ClassificationHead(d_model, num_classes)
 
     def forward(self, x_enc, enc_self_mask=None):
-        enc_out = self.enc_embedding(x_enc)
-        enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
-        enc_out = self.projection(enc_out)
+        batch_size,seq_len,_,_,_ = x_enc.shape
+        # !!!!!非继承的tensor切记要移动到cuda中去
+        x_features = torch.Tensor(batch_size, seq_len*self.s, 512).to(self.device)
+        for i in range(seq_len):
+            # x_feature在token learner之后是[batch_size,self.s,512]
+            x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
+            x_feature = self.token_learner(x_feature)
+            x_features[:, i:i+self.s, :] = x_feature
+
+        x_features = self.enc_embedding(x_features)
+        x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
+        x_features = self.projection(x_features)
         # 这里是为了输出注意力图像，参见colab里面那个
         if self.output_attention:
-            return enc_out, attns
+            return x_features, attns
         else:
-            return enc_out
+            return x_features

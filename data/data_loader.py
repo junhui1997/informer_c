@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset, DataLoader
 # from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import StratifiedKFold
+from utils.tools import get_fold
 
 from utils.tools import StandardScaler
 from utils.timefeatures import time_features
@@ -355,17 +355,7 @@ class Dataset_jigsaw(Dataset):
     def get_class_name(self):
         return self.class_name
 
-def get_fold(df_kfold,folds,key_name):
-    kfolder = StratifiedKFold(n_splits=folds, shuffle=True, random_state=719)
-    df_kfold[key_name] = df_kfold[key_name].apply(str)
-    val_indices = [val_indices for _, val_indices in kfolder.split(df_kfold[key_name], df_kfold[key_name])]
-    df_kfold['fold'] = -1
-    #给每个都打上了fold index
-    for i, vi in enumerate(val_indices):
-        #print(i,vi)
-        folder_idx = df_kfold.index[vi]
-        df_kfold.loc[folder_idx,'fold'] = i
-    return df_kfold
+
 class Dataset_jigsaw_g(Dataset):
     def __init__(self, flag='train', size=48,
                  enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
@@ -398,12 +388,12 @@ class Dataset_jigsaw_g(Dataset):
         val_list = []
         label_list = []
         #四分之一的采样率
-        for i in range(0, df.shape[0]-self.seq_len,6):
-            if df.iloc[i]['file_name'] != df.iloc[i+self.seq_len]['file_name']:
+        for i in range(self.seq_len, df.shape[0],60):
+            if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
                 continue
-            # 10是因为第11列开始才是有效数据，详情请看dataloader里面写的
+            # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
-            val = df.iloc[i:i + self.seq_len, 10:10 + self.enc_in].to_numpy()
+            val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy()
             label = df.iloc[i]['gesture']
             val_list.append(val)
             label_list.append(label)

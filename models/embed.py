@@ -63,7 +63,7 @@ class NoTimeEmbedding(nn.Module):
 
     def forward(self, x):
         batch_size, seq_len, time_featue = x.shape
-        # 这里因为不是葱x继承过来的，所以需要cuda
+        # 这里因为不是从x继承过来的，所以需要cuda
         zero = torch.zeros(batch_size, seq_len, self.d_model).cuda()
         return zero
 

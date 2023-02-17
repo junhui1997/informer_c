@@ -1,6 +1,9 @@
 from data.data_loader import Dataset_ETT_hour,Dataset_rob,Dataset_jigsaw,Dataset_jigsaw_g
+from data.data_loader_img import Dataset_jigsaw_gv
+from data.data_loader_imgk import Dataset_jigsaw_gvk
 from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
+from models.ctt import ctt
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -34,10 +37,13 @@ class Exp_Informer(Exp_Basic):
         model_dict = {
             'informer':Informer,
             'informerstack':InformerStack,
+            'ctt': ctt,
         }
-        if self.args.model=='informer' or self.args.model=='informerstack':
+        if self.args.model in model_dict.keys():
             # s_layer的作用是？普通的e_layer是encoder layer的数目，而对于s来说是3,2,1这样的话是怎么看呢，number of stack encoder layer
-            e_layers = self.args.e_layers if self.args.model=='informer' else self.args.s_layers
+            # 这一行用在了stack里面，之后有需求再看
+            # e_layers = self.args.e_layers if self.args.model=='informer' else self.args.s_layers
+            e_layers = self.args.e_layers
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.c_out, 
@@ -58,14 +64,22 @@ class Exp_Informer(Exp_Basic):
                 self.args.num_classes
             ).float()
 
-        #在这里model已经完成了实例化,batch_size是有一个输入的参数的
+
+        # 在这里model已经完成了实例化,batch_size是有一个输入的参数的
         if self.args.model=='informer' and self.args.show_para:
             summary_info(
                 model,
                 input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
                 col_names=["output_size", "num_params"],
             )
+        elif self.args.model=='ctt' and self.args.show_para:
+            summary_info(
+                model,
+                input_size=(self.args.batch_size, self.args.seq_len, 3, 224, 244),
+                col_names=["output_size", "num_params"],
+            )
 
+        # to device写在了exp basic里面去了
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
@@ -81,6 +95,12 @@ class Exp_Informer(Exp_Basic):
             'jigsaw_kt_g': Dataset_jigsaw_g,
             'jigsaw_np_g': Dataset_jigsaw_g,
             'jigsaw_su_g': Dataset_jigsaw_g,
+            'jigsaw_kt_gv': Dataset_jigsaw_gv,
+            'jigsaw_np_gv': Dataset_jigsaw_gv,
+            'jigsaw_su_gv': Dataset_jigsaw_gv,
+            'jigsaw_kt_gvk': Dataset_jigsaw_gvk,
+            'jigsaw_np_gvk': Dataset_jigsaw_gvk,
+            'jigsaw_su_gvk': Dataset_jigsaw_gvk,
 
         }
         # 注意data这里还没有完成实例化，完成实例化之后再调用instance
@@ -219,6 +239,7 @@ class Exp_Informer(Exp_Basic):
             self.all_train_loss.append(train_loss)
             self.all_val_loss.append(vali_loss)
             self.all_test_loss.append(test_loss)
+            print('this is all train loss',self.all_train_loss)
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
@@ -277,6 +298,7 @@ class Exp_Informer(Exp_Basic):
 
         print('test accuracy is ', acc)
         # save confusion matrix and the heat map
+        # 是为了避免实验重复时候出现的图层重叠
         df.to_csv(folder_path+'confusion_m.csv')
         sns.heatmap(df, annot=True, cbar=None, cmap="YlGnBu", fmt="d")
         plt.title("Confusion Matrix"), plt.tight_layout()
@@ -285,8 +307,10 @@ class Exp_Informer(Exp_Basic):
         plt.savefig(folder_path+'confusion_matrix.png')
         plt.clf()
 
+
         # save loss plot
-        x = [i+1 for i in range(self.args.train_epochs)]
+        # 避免有时候被early stopping掉
+        x = [i+1 for i in range(len(self.all_train_loss))]
         plt.plot(x, self.all_train_loss, label='train loss')
         plt.plot(x, self.all_val_loss, label='val loss')
         plt.plot(x, self.all_test_loss, label='test loss')
@@ -294,14 +318,15 @@ class Exp_Informer(Exp_Basic):
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(folder_path+'loss.jpg')
+        plt.clf()
 
         # save accuracy plot
-        plt.clf()
         plt.plot(x, self.all_accuracy, label='val accuracy')
         plt.legend(loc='upper right')
         plt.xlabel('epoch')
         plt.ylabel('accuracy %')
         plt.savefig(folder_path + 'accuracy.jpg')
+        plt.clf()
 
         return
 

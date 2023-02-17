@@ -57,7 +57,7 @@ class ProbAttention(nn.Module):
         self.output_attention = output_attention
         self.dropout = nn.Dropout(attention_dropout)
 
-    def _prob_QK(self, Q, K, sample_k, n_top): # n_top: c*ln(L_q)
+    def _prob_QK(self, Q, K, sample_k, n_top): # n_top: c*ln(L_q) #sample_k看下面forward里面
         # 是因为在forward里面先transpose交换了顺序,D和E是 = d_model/n_head 64
         # Q [B, H, L, D]
         B, H, L_K, E = K.shape
@@ -70,11 +70,13 @@ class ProbAttention(nn.Module):
         # sample_k = U_part,通过index_sample实现对L_Q*L_K部分的采样
         index_sample = torch.randint(L_K, (L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
 
+        # k的采样
         # 这里test的shape是torch.Size([32, 8, 96, 96, 25, 64])，而k_sample:torch.Size([32, 8, 96, 25, 64]是不一样的
         K_sample = K_expand[:, :, torch.arange(L_Q).unsqueeze(1), index_sample, :]
         #test = K_expand[:, :, :, index_sample, :]
 
-        #         = Q（B,H,L_K.-1,D)*K(B,H,L_Q,D,n_sample) = （B,H,L_K.-1,n_sample)
+        # q对k采样的采样
+        #         = Q（B,H,L_K,-1,D)*K(B,H,L_Q,D,n_sample) = （B,H,L_K,-1,n_sample)
         Q_K_sample = torch.matmul(Q.unsqueeze(-2), K_sample.transpose(-2, -1)).squeeze(-2)
 
         # find the Top_k query with sparisty measurement
@@ -97,6 +99,7 @@ class ProbAttention(nn.Module):
     #这里是对v的更新
     def _get_initial_context(self, V, L_Q):
         # mask维度和原本维度保持不变
+        # 没有mask时候是对LV这个维度上面取了均值，之后又给复制了L_Q这个维度
         B, H, L_V, D = V.shape
         if not self.mask_flag:
             # V_sum = V.sum(dim=-2)
@@ -108,6 +111,15 @@ class ProbAttention(nn.Module):
         return contex
 
     # 主要是添加了prob mask和output attention，其他的计算主要是维度方面的不同，output attention是attention*v
+    # D最初时候是dmodel/num_head
+    # factorx = factor*ln(L_q)
+    # L_V这里第一次时候是和seq_len一致的，所以实际是len of v
+    # attn,score:[batch_size,num_head,factorx,L_v]
+    # V:[batch_size,num_head,L_v,D]
+    # context_in:[batch_size,num_head,L_V,D], context_in的shape是不会变得
+    # index：[batch_size,num_head,factorx]
+    # 这样相当于只更新了context_in,seq_len维度上面前factorx的维度，这是上面产生的index，并不是说按照顺序的前factorx个
+    # 计算到这一步时候已经缩放过一次了
     def _update_context(self, context_in, V, scores, index, L_Q, attn_mask):
         B, H, L_V, D = V.shape
 
@@ -150,10 +162,13 @@ class ProbAttention(nn.Module):
         if scale is not None:
             scores_top = scores_top * scale
         # get the context
+        # context就是V，但是这里context生成就很奇特，不知道为啥需要先降维后升维度
         context = self._get_initial_context(values, L_Q)
         # update the context with selected top_k queries
+        # 只更新了index处的V
         context, attn = self._update_context(context, values, scores_top, index, L_Q, attn_mask)
-        
+
+        # 这里只作为encoder，所以必定输出attn
         return context.transpose(2,1).contiguous(), attn
 
 """

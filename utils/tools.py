@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from sklearn.model_selection import StratifiedKFold
 
 
 def cosine(t_max, eta_min=0):
@@ -91,3 +92,15 @@ class StandardScaler():
             mean = mean[-1:]
             std = std[-1:]
         return (data * std) + mean
+
+def get_fold(df_kfold,folds,key_name):
+    kfolder = StratifiedKFold(n_splits=folds, shuffle=True, random_state=719)
+    df_kfold[key_name] = df_kfold[key_name].apply(str)
+    val_indices = [val_indices for _, val_indices in kfolder.split(df_kfold[key_name], df_kfold[key_name])]
+    df_kfold['fold'] = -1
+    #给每个都打上了fold index
+    for i, vi in enumerate(val_indices):
+        #print(i,vi)
+        folder_idx = df_kfold.index[vi]
+        df_kfold.loc[folder_idx,'fold'] = i
+    return df_kfold

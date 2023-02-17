@@ -68,12 +68,24 @@ if args.use_gpu and args.use_multi_gpu:
 data_parser = {
     'ETTh1':{'data':'ETTh1.csv','T':'OT','M':[7,7,7],'S':[1,1,1],'MS':[7,7,1]},
     'navi_rob':{'folder':'./data/navi_rob/','enc_in':10,'c_out':1,'num_classes':10},
+    # 熟练度分类，只使用了运动学数据
     'jigsaw_kt':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     'jigsaw_np':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     'jigsaw_su':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
+    # gesture分类问题，只使用了运动学数据
     'jigsaw_kt_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
     'jigsaw_np_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
     'jigsaw_su_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    # gesture分类问题，只使用了图像数据
+    # 对于视觉来说只有一个维度，不像运动学数据可能会同时用好几个的
+    'jigsaw_kt_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
+    'jigsaw_np_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
+    'jigsaw_su_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
+    # 同时使用了运动学和图像数据
+    'jigsaw_kt_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_np_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_su_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+
 }
 
 if args.task in data_parser.keys():
