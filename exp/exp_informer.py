@@ -239,7 +239,6 @@ class Exp_Informer(Exp_Basic):
             self.all_train_loss.append(train_loss)
             self.all_val_loss.append(vali_loss)
             self.all_test_loss.append(test_loss)
-            print('this is all train loss',self.all_train_loss)
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))

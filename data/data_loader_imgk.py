@@ -2,24 +2,28 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset, DataLoader
+from utils.tools import get_fold
 # from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import StratifiedKFold
+from PIL import Image
 
 from utils.tools import StandardScaler
-from utils.timefeatures import time_features
+from data.transform_list import transform_train,transform_test
+
 
 import warnings
 warnings.filterwarnings('ignore')
 
+# 对于视觉任务不考虑enc_in
+# 两个capture感觉区别不大啊，直接使用其中一个跑跑，事后再使用另一个跑
 class Dataset_jigsaw_gvk(Dataset):
     def __init__(self, flag='train', size=48,
                  enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
+        self.seq_lenv = int(self.seq_len**(0.5)/2)
         self.enc_in = enc_in
         self.task = task
 
@@ -37,25 +41,35 @@ class Dataset_jigsaw_gvk(Dataset):
 
     def prepare_data(self):
         folder = '../jigsaw/'
-        if self.task == 'jigsaw_kt_g':
+        if self.task == 'jigsaw_kt_gvk':
             df = pd.read_pickle(folder+'Knot_Tying.pkl')
-        elif self.task == 'jigsaw_np_g':
+            self.image_floder = '../jigsaw/video_slice/Knot_Tying/'
+        elif self.task == 'jigsaw_np_gvk':
             df = pd.read_pickle(folder+'Needle_Passing.pkl')
-        elif self.task == 'jigsaw_su_g':
+            self.image_floder = '../jigsaw/video_slice/Needle_Passing/'
+        elif self.task == 'jigsaw_su_gvk':
             df = pd.read_pickle(folder+'Suturing.pkl')
+            self.image_floder = '../jigsaw/video_slice/Suturing/'
         val_list = []
         label_list = []
+        frame_list = []
+        filename_l = []
         #四分之一的采样率
-        for i in range(0, df.shape[0]-self.seq_len,6):
-            if df.iloc[i]['file_name'] != df.iloc[i+self.seq_len]['file_name']:
+        for i in range(self.seq_len, df.shape[0], 60):
+            if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
                 continue
-            # 10是因为第11列开始才是有效数据，详情请看dataloader里面写的
+            # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
-            val = df.iloc[i:i + self.seq_len, 10:10 + self.enc_in].to_numpy()
+            val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy()
+            frame = df.iloc[i]['frame']
+            filename = df.iloc[i]['file_name'].split('.')[0]
             label = df.iloc[i]['gesture']
+
             val_list.append(val)
+            frame_list.append(frame)
+            filename_l.append(filename)
             label_list.append(label)
-        self.x_data_trn = pd.DataFrame({"value list": val_list, "gesture": label_list})
+        self.x_data_trn = pd.DataFrame({"value list": val_list, "gesture": label_list, "file_name": filename_l, "frame": frame_list})
         self.enc.fit(self.x_data_trn['gesture'])
         self.class_name = self.enc.inverse_transform([i for i in range(len(self.x_data_trn['gesture'].unique()))])
 
@@ -112,11 +126,29 @@ class Dataset_jigsaw_gvk(Dataset):
 
     # 最后输出分别是data,label,以及time_stamp的data和label
     def __getitem__(self, index):
-        # 这个enc_in参数写在了上面，没有像navi_rob写在这里
+        imgs = None
+        for i in range(self.seq_lenv):
+            file_name = "{}_capture1_frame_{}".format(self.data_x.iloc[index]['file_name'], int(self.data_x.iloc[index]['frame'])-self.seq_len+i)
+            img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder, file_name)))
+            img = img / 255
+            if self.flag == 'train':
+                img = transform_train(img)
+            elif self.flag == 'val':
+                img = transform_test(img)
+            elif self.flag == 'test':
+                img = transform_test(img)
+            img.permute(2, 0, 1)
+            img = img.to(torch.float)
+            img = img.unsqueeze(0)
+            if imgs is None:
+                imgs = img
+            else:
+                imgs = torch.cat((imgs, img), dim=0)
+
         data = self.data_x['value list'].iloc[index].astype('float64')
         # 原本是个裸露的int，为了使用crossentropy需要改变一下
         label = torch.tensor(self.data_y[index]).to(torch.long)
-        return data, label
+        return [imgs, data], label
 
     def __len__(self):
         return self.ds_len
