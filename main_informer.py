@@ -49,7 +49,7 @@ parser.add_argument('--lradj', type=str, default='type1',help='adjust learning r
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
 
-parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
+parser.add_argument('--use_gpu', type=int, default=1, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
 parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of multile gpus')
@@ -102,6 +102,7 @@ args.s_layers = [int(s_l) for s_l in args.s_layers.replace(' ','').split(',')]
 
 print('Args in experiment:')
 print(args)
+torch.manual_seed(10789492743061373360)
 seed = torch.initial_seed()
 print('current seed is', seed)
 

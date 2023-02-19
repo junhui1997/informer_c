@@ -28,6 +28,7 @@ class ctt(nn.Module):
         self.s = 8
         self.cnn_feature = cnn_feature()
         self.token_learner = token_learner(S=self.s)
+        self.token_learners = nn.ModuleList([token_learner(S=self.s) for _ in range(seq_len)])
         self.device = device
 
         # attn这里是选择不同的attention，一共有两种一种是普通的attention一种是prob attention
@@ -70,6 +71,8 @@ class ctt(nn.Module):
         # 最后通过nn.linear输出成想要的形状
         self.projection = ClassificationHead(d_model, num_classes)
 
+        self.new_fc = torch.nn.Linear(512,num_classes)
+
     def forward(self, x_enc, enc_self_mask=None):
         batch_size,seq_len,_,_,_ = x_enc.shape
         # !!!!!非继承的tensor切记要移动到cuda中去
@@ -77,8 +80,9 @@ class ctt(nn.Module):
         for i in range(seq_len):
             # x_feature在token learner之后是[batch_size,self.s,512]
             x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
-            x_feature = self.token_learner(x_feature)
-            x_features[:, i:i+self.s, :] = x_feature
+            x_feature = self.token_learners[i](x_feature)
+            x_features[:, i*self.s:(i+1)*self.s, :] = x_feature
+
 
         x_features = self.enc_embedding(x_features)
         x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
@@ -88,3 +92,103 @@ class ctt(nn.Module):
             return x_features, attns
         else:
             return x_features
+
+    #only use the last feature, this one is also ok
+    # def forward(self, x_enc, enc_self_mask=None):
+    #     batch_size,seq_len,_,_,_ = x_enc.shape
+    #     # !!!!!非继承的tensor切记要移动到cuda中去
+    #     x_features = torch.Tensor(batch_size, seq_len*self.s, 512).to(self.device)
+    #     for i in range(seq_len):
+    #         # x_feature在token learner之后是[batch_size,self.s,512]
+    #         x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
+    #         #x_feature = self.token_learner(x_feature)
+    #         #x_features[:, i:i+self.s, :] = x_feature
+    #
+    #     attns = 0
+    #     x_features = x_feature
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = self.new_fc(x_features)
+    #     # x_features = self.enc_embedding(x_features)
+    #     # x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
+    #     # x_features = self.projection(x_features)
+    #     # 这里是为了输出注意力图像，参见colab里面那个
+    #     if self.output_attention:
+    #         return x_features, attns
+    #     else:
+    #         return x_features
+
+
+    # use full feature, this one is ok
+    # def forward(self, x_enc, enc_self_mask=None):
+    #     batch_size,seq_len,_,_,_ = x_enc.shape
+    #     # !!!!!非继承的tensor切记要移动到cuda中去
+    #     x_features = torch.Tensor(batch_size, seq_len, 512, 7,7).to(self.device)
+    #     for i in range(seq_len):
+    #         # x_feature在token learner之后是[batch_size,self.s,512]
+    #         x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
+    #         #x_feature = self.token_learner(x_feature)
+    #         x_features[:, i, :, :, :] = x_feature
+    #
+    #     attns = 0
+    #     x_features = x_features.permute(0,2,1,3,4)
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = torch.mean(x_features, dim=-1)
+    #     x_features = self.new_fc(x_features)
+    #     # x_features = self.enc_embedding(x_features)
+    #     # x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
+    #     # x_features = self.projection(x_features)
+    #     # 这里是为了输出注意力图像，参见colab里面那个
+    #     if self.output_attention:
+    #         return x_features, attns
+    #     else:
+    #         return x_features
+
+    # not use token learner,only use mean to concate different image feature
+    # def forward(self, x_enc, enc_self_mask=None):
+    #     batch_size,seq_len,_,_,_ = x_enc.shape
+    #     # !!!!!非继承的tensor切记要移动到cuda中去
+    #     x_features = torch.Tensor(batch_size, seq_len, 512, 7,7).to(self.device)
+    #     for i in range(seq_len):
+    #         # x_feature在token learner之后是[batch_size,self.s,512]
+    #         x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
+    #         #x_feature = self.token_learner(x_feature)
+    #         x_features[:, i, :, :, :] = x_feature
+    #
+    #     attns = 0
+    #     x_features = x_features.permute(0,2,1,3,4)
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = torch.mean(x_features,dim= -1)
+    #     x_features = x_features.permute(0,2,1)
+    #     x_features = self.enc_embedding(x_features)
+    #     x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
+    #     x_features = self.projection(x_features)
+    #     # 这里是为了输出注意力图像，参见colab里面那个
+    #     if self.output_attention:
+    #         return x_features, attns
+    #     else:
+    #         return x_features
+
+    # # use single feature and token learner
+    # def forward(self, x_enc, enc_self_mask=None):
+    #     batch_size, seq_len, _, _, _ = x_enc.shape
+    #     # !!!!!非继承的tensor切记要移动到cuda中去
+    #     x_features = torch.Tensor(batch_size, 1 * self.s, 512).to(self.device)
+    #     for i in range(1):
+    #         # x_feature在token learner之后是[batch_size,self.s,512]
+    #         x_feature = self.cnn_feature(x_enc[:, i, :, :, :])
+    #         x_feature = self.token_learner(x_feature)
+    #         x_features[:, i:i+self.s, :] = x_feature
+    #
+    #     attns = 0
+    #     x_features = torch.mean(x_features, dim= 1)
+    #     x_features = self.new_fc(x_features)
+    #     # x_features = self.enc_embedding(x_features)
+    #     # x_features, attns = self.encoder(x_features, attn_mask=enc_self_mask)
+    #     # x_features = self.projection(x_features)
+    #     # 这里是为了输出注意力图像，参见colab里面那个
+    #     if self.output_attention:
+    #         return x_features, attns
+    #     else:
+    #         return x_features

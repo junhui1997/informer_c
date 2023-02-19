@@ -24,6 +24,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from torchsummary import summary as summary_t
 from torchinfo import summary as summary_info
+from torch import autograd
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -66,18 +67,18 @@ class Exp_Informer(Exp_Basic):
 
 
         # 在这里model已经完成了实例化,batch_size是有一个输入的参数的
-        if self.args.model=='informer' and self.args.show_para:
-            summary_info(
-                model,
-                input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
-                col_names=["output_size", "num_params"],
-            )
-        elif self.args.model=='ctt' and self.args.show_para:
-            summary_info(
-                model,
-                input_size=(self.args.batch_size, self.args.seq_len, 3, 224, 244),
-                col_names=["output_size", "num_params"],
-            )
+        # if self.args.model=='informer' and self.args.show_para:
+        #     summary_info(
+        #         model,
+        #         input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
+        #         col_names=["output_size", "num_params"],
+        #     )
+        # elif self.args.model=='ctt' and self.args.show_para:
+        #     summary_info(
+        #         model,
+        #         input_size=(self.args.batch_size, self.args.seq_len, 3, 224, 244),
+        #         col_names=["output_size", "num_params"],
+        #     )
 
         # to device写在了exp basic里面去了
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -208,6 +209,14 @@ class Exp_Informer(Exp_Basic):
 
                 # 需要每一个batch时候zero_grad！
                 model_optim.zero_grad()
+                # for name, param in self.model.named_parameters():
+                #     if param.grad is not None and torch.isnan(param.grad).any():
+                #         print("nan gradient found")
+                #         print("name:", name)
+
+                #torch.autograd.set_detect_anomaly(True)
+
+
                 pred = self._process_one_batch(batch_x)
                 true = batch_y.to(self.device)
                 loss = criterion(pred, true)
@@ -229,8 +238,16 @@ class Exp_Informer(Exp_Basic):
                     scaler.step(model_optim)
                     scaler.update()
                 else:
+                    # with autograd.detect_anomaly():
+                    #     loss.backward()
+                    #     model_optim.step()
                     loss.backward()
                     model_optim.step()
+                    # for name, param in self.model.named_parameters():
+                    #     if param.grad is not None and torch.isnan(param.grad).any():
+                    #         print("nan gradient found")
+                    #         print("name:", name)
+                    a = 1
 
             print("Epoch: {} cost time: {}".format(epoch+1, time.time()-epoch_time))
             train_loss = np.average(train_loss)

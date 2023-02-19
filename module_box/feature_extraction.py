@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import timm
+import torchvision
 
 # cnn到这一层输出的channel数目就是512，这是不会变得，所以到下一层的token_learner也没啥影响
 # out x[512,a,b] a,b随图像的尺寸变化
@@ -10,6 +11,7 @@ class cnn_feature(nn.Module):
         super().__init__()
         # 需要用resnet50的话直接改成50jike
         self.resnet = timm.create_model('resnet18', pretrained=True)
+        #self.resnet = torchvision.models.resnet18(pretrained = True)
         self.resnet.eval()
         self.resnet_list = list(self.resnet.children())
         # dprint('len of resnet',len(self.resnet_list))
