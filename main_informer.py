@@ -102,7 +102,7 @@ args.s_layers = [int(s_l) for s_l in args.s_layers.replace(' ','').split(',')]
 
 print('Args in experiment:')
 print(args)
-torch.manual_seed(10789492743061373360)
+#torch.manual_seed(10789492743061373360)
 seed = torch.initial_seed()
 print('current seed is', seed)
 

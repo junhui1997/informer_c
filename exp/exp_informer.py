@@ -4,6 +4,7 @@ from data.data_loader_imgk import Dataset_jigsaw_gvk
 from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 from models.ctt import ctt
+from models.ctt_gv import ctt_gv
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -39,6 +40,7 @@ class Exp_Informer(Exp_Basic):
             'informer':Informer,
             'informerstack':InformerStack,
             'ctt': ctt,
+            'ctt_gv':ctt_gv
         }
         if self.args.model in model_dict.keys():
             # s_layer的作用是？普通的e_layer是encoder layer的数目，而对于s来说是3,2,1这样的话是怎么看呢，number of stack encoder layer
@@ -383,7 +385,12 @@ class Exp_Informer(Exp_Basic):
     # return: [batch_size,num_classes]
     def _process_one_batch(self, batch_x):
         #已知batch代表的是真实的数值
-        batch_x = batch_x.float().to(self.device)
+        if type(batch_x) == list:
+            batch_x[0] = batch_x[0].float().to(self.device)
+            batch_x[1] = batch_x[1].float().to(self.device)
+            #print(type(batch_x[0]))
+        else:
+            batch_x = batch_x.float().to(self.device)
 
         # 混合精度训练
         if self.args.use_amp:
