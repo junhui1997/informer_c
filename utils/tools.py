@@ -10,8 +10,8 @@ def cosine(t_max, eta_min=0):
 
     return scheduler
 
-
-def adjust_learning_rate(optimizer, epoch, args):
+#只有type4时候需要用到val_loss这个参数，其他几个都是设定好得直接往下走
+def adjust_learning_rate(optimizer, epoch, args , scheduler = None,val_loss=0):
     # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if args.lradj=='type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 1))}
@@ -22,11 +22,19 @@ def adjust_learning_rate(optimizer, epoch, args):
         }
     elif args.lradj == 'type3':
         base_lr = args.learning_rate
-        sched = cosine(t_max=args.iterations_per_epoch * 2, eta_min=base_lr / 100)
+        # 这个地方/2代表了整个周期内会执行两次波形 ，eta_min代表的是最小值会到多少
+        sched = cosine(t_max=args.train_epochs / 2, eta_min=base_lr / 100)
         lr_adjust = {
             i: sched(i, base_lr) for i in range(args.train_epochs)
         }
-        a = 1
+    elif args.lradj == 'type4':
+        lr_prev = optimizer.param_groups[0]['lr']
+        scheduler.step(val_loss)
+        lr = optimizer.param_groups[0]['lr']
+        if lr != lr_prev:
+            print('Updating learning rate to {}'.format(lr))
+        return
+
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
         for param_group in optimizer.param_groups:

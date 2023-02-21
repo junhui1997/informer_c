@@ -48,6 +48,7 @@ class ctt_gv(nn.Module):
         # 每次执行conv时候seq_len减半
         # attention_layer的四个输入attention,d_model,n_head,mix
         # attention块的输入
+        # 固定先使用了四层kine
         self.kine_encoder = Encoder(
             [
                 EncoderLayer(
@@ -62,7 +63,7 @@ class ctt_gv(nn.Module):
             [
                 ConvLayer(
                     d_model
-                ) for l in range(e_layers - 1)
+                ) for l in range(4 - 1)
             ],
             norm_layer=torch.nn.LayerNorm(d_model)
         )

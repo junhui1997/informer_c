@@ -23,7 +23,7 @@ class Dataset_jigsaw_gvk(Dataset):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
-        self.seq_lenv = int(self.seq_len**(0.5)/2)
+        self.seq_lenv = int(self.seq_len**(0.5))
         self.enc_in = enc_in
         self.task = task
 

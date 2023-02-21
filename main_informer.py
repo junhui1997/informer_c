@@ -44,7 +44,7 @@ parser.add_argument('--batch_size', type=int, default=32, help='batch size of tr
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
 parser.add_argument('--des', type=str, default='test',help='exp description')
-parser.add_argument('--loss', type=str, default='mse',help='loss function')
+parser.add_argument('--loss', type=str, default='norm',help='loss function')
 parser.add_argument('--lradj', type=str, default='type1',help='adjust learning rate')
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
@@ -110,10 +110,10 @@ Exp = Exp_Informer
 
 for ii in range(args.itr):
     # setting record of experiments
-    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}'.format(args.model, args.task,
+    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss{}'.format(args.model, args.task,
                 args.seq_len,
                 args.d_model, args.n_heads, args.e_layers, args.d_ff, args.attn, args.factor,
-                args.embed, args.distil, args.mix, args.des, ii, args.train_epochs)
+                args.embed, args.distil, args.mix, args.des, ii, args.train_epochs, args.loss)
 
     exp = Exp(args) # set experiments
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))

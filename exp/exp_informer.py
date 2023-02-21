@@ -5,7 +5,7 @@ from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 from models.ctt import ctt
 from models.ctt_gv import ctt_gv
-
+from module_box.all_loss import focal_loss
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
@@ -23,6 +23,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch.optim.lr_scheduler as lr_scheduler
 from torchsummary import summary as summary_t
 from torchinfo import summary as summary_info
 from torch import autograd
@@ -139,10 +140,20 @@ class Exp_Informer(Exp_Basic):
 
     def _select_optimizer(self):
         model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        scheduler = lr_scheduler.ReduceLROnPlateau(model_optim, 'min', patience=2)
         return model_optim
-    
+    def _select_scheduler(self,optimizer):
+        if self.args.lradj == 'type4':
+            # patientce = 2,代表的是3次val 没有下降后开始降低learning rate
+            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8,patience=2)
+        else:
+            scheduler = None
+        return scheduler
     def _select_criterion(self):
-        criterion = nn.CrossEntropyLoss()
+        if self.args.loss == 'norm':
+            criterion = nn.CrossEntropyLoss()
+        elif self.args.loss == 'focal':
+            criterion = focal_loss()
         return criterion
 
     #计算val_loss
@@ -150,14 +161,21 @@ class Exp_Informer(Exp_Basic):
         #首先设置的是eval模式
         self.model.eval()
         total_loss = []
+        correct, total = 0, 0
         for i, (batch_x, batch_y) in enumerate(vali_loader):
             pred = self._process_one_batch(batch_x)
             true = batch_y.to(self.device)
             loss = criterion(pred.detach().cpu(), true.detach().cpu())
             total_loss.append(loss)
+            # calculate accy
+            pred_idx = F.log_softmax(pred, dim=1).argmax(dim=1)
+            total += true.size(0)  # 统计了batch_size
+            correct += (pred_idx == true).sum().item()
+
         total_loss = np.average(total_loss)
+        acc = correct / total
         self.model.train()
-        return total_loss
+        return total_loss, acc
 
     # 计算分类里面准确率
     def vali_accuracy(self, vali_loader):
@@ -190,6 +208,7 @@ class Exp_Informer(Exp_Basic):
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
         
         model_optim = self._select_optimizer()
+        scheduler = self._select_scheduler(model_optim)
         criterion = self._select_criterion()
         self.all_train_loss = []
         self.all_val_loss = []
@@ -253,8 +272,8 @@ class Exp_Informer(Exp_Basic):
 
             print("Epoch: {} cost time: {}".format(epoch+1, time.time()-epoch_time))
             train_loss = np.average(train_loss)
-            vali_loss = self.vali(vali_loader, criterion)
-            test_loss = self.vali(test_loader, criterion)
+            vali_loss, current_accuray = self.vali(vali_loader, criterion)
+            test_loss, _ = self.vali(test_loader, criterion)
             self.all_train_loss.append(train_loss)
             self.all_val_loss.append(vali_loss)
             self.all_test_loss.append(test_loss)
@@ -262,7 +281,6 @@ class Exp_Informer(Exp_Basic):
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
 
-            current_accuray = self.vali_accuracy(vali_loader)
             self.all_accuracy.append(current_accuray)
             print('current accuracy in Epoch: {0} is {1:.7f}'.format(epoch + 1, current_accuray))
             if current_accuray > best_accuracy:
@@ -274,7 +292,7 @@ class Exp_Informer(Exp_Basic):
                 print("Early stopping")
                 break
 
-            adjust_learning_rate(model_optim, epoch+1, self.args)
+            adjust_learning_rate(model_optim, epoch+1, self.args, scheduler, vali_loss)
 
         # 最后时候给加载上去
         best_model_path = path+'/'+'checkpoint.pth'
@@ -317,12 +335,30 @@ class Exp_Informer(Exp_Basic):
         print('test accuracy is ', acc)
         # save confusion matrix and the heat map
         # 是为了避免实验重复时候出现的图层重叠
-        df.to_csv(folder_path+'confusion_m.csv')
+        df.to_pickle(folder_path+'confusion_m.csv')
         sns.heatmap(df, annot=True, cbar=None, cmap="YlGnBu", fmt="d")
         plt.title("Confusion Matrix"), plt.tight_layout()
         plt.xlabel("True Class"),
         plt.ylabel("Predicted Class")
         plt.savefig(folder_path+'confusion_matrix.png')
+        plt.clf()
+
+
+        # save accuracy plot for each class
+        confusion_np = df.values
+        TP = np.diag(confusion_np)
+        FN = confusion_np.sum(axis=1) - TP
+        FP = confusion_np.sum(axis=0) - TP
+        TN = confusion_np.sum() - (TP + FN + FP)
+        # 计算每个类别的准确率
+        accuracy = TP / (TP + FP)
+        # 创建条形图
+        plt.bar(range(len(accuracy)), accuracy)
+        plt.xticks(range(len(accuracy)), list(df.columns))
+        plt.ylabel('Accuracy')
+        plt.xlabel('True label')
+        plt.title(f'Confusion matrix with accuracy {acc:.4f}')
+        plt.savefig(folder_path + 'each_accuracy.jpg')
         plt.clf()
 
 
