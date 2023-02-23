@@ -145,7 +145,7 @@ class Exp_Informer(Exp_Basic):
     def _select_scheduler(self,optimizer):
         if self.args.lradj == 'type4':
             # patientce = 2,代表的是3次val 没有下降后开始降低learning rate
-            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8,patience=2)
+            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8,patience=1)
         else:
             scheduler = None
         return scheduler
