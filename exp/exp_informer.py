@@ -6,11 +6,14 @@ from models.model import Informer, InformerStack
 from models.ctt import ctt
 from models.ctt_gv import ctt_gv
 from module_box.all_loss import focal_loss
+from module_box.edit_score_dist import calculate_edit_score
+from module_box.all_plot import plot_color_code
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
 import numpy as np
 import seaborn as sns
+import pickle
 
 import torch
 import torch.nn as nn
@@ -34,6 +37,7 @@ class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
         # 从exp_basic里面继承了init的函数，在那里面执行了_build_model
+        # 获取device也是这里
 
     
     def _build_model(self):
@@ -69,19 +73,19 @@ class Exp_Informer(Exp_Basic):
             ).float()
 
 
-        # 在这里model已经完成了实例化,batch_size是有一个输入的参数的
-        # if self.args.model=='informer' and self.args.show_para:
-        #     summary_info(
-        #         model,
-        #         input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
-        #         col_names=["output_size", "num_params"],
-        #     )
-        # elif self.args.model=='ctt' and self.args.show_para:
-        #     summary_info(
-        #         model,
-        #         input_size=(self.args.batch_size, self.args.seq_len, 3, 224, 244),
-        #         col_names=["output_size", "num_params"],
-        #     )
+        ##在这里model已经完成了实例化,batch_size是有一个输入的参数的
+        if self.args.model=='informer' and self.args.show_para:
+            summary_info(
+                model,
+                input_size=(self.args.batch_size, self.args.seq_len,self.args.enc_in),
+                col_names=["output_size", "num_params"],
+            )
+        elif self.args.model=='ctt' and self.args.show_para:
+            summary_info(
+                model,
+                input_size=(self.args.batch_size, self.args.seq_len, 3, 224, 244),
+                col_names=["output_size", "num_params"],
+            )
 
         # to device写在了exp basic里面去了
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -193,6 +197,7 @@ class Exp_Informer(Exp_Basic):
         return acc
 
     def train(self, setting):
+        #这里相当于每一个都实例化了一次dataset和dataloader，这样如果dataset里面本身的要处理的信息就比较多的话会导致说重复创建牺牲很多性能
         train_data, train_loader = self._get_data(flag = 'train')
         vali_data, vali_loader = self._get_data(flag = 'val')
         test_data, test_loader = self._get_data(flag = 'test')
@@ -326,9 +331,13 @@ class Exp_Informer(Exp_Basic):
         cf_matrix = confusion_matrix(predict_encoder, label_encoder)
         df = pd.DataFrame(cf_matrix, index=self.class_name, columns=self.class_name)
 
+        #calculate edit score and distance
+        edit_distance, edit_score = calculate_edit_score(predict_list, label_list)
+
 
         # result save
         folder_path = './results/' + setting +'acc{0:0.4f}'.format(acc)+'/'
+        self.folder_path = folder_path
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
@@ -343,6 +352,12 @@ class Exp_Informer(Exp_Basic):
         plt.savefig(folder_path+'confusion_matrix.png')
         plt.clf()
 
+        #save edit score and distance
+        # 打开一个文本文件，如果不存在则创建它
+        with open(folder_path+'output.txt', 'w') as f:
+            # 将print语句的输出写入文件中
+            print("Edit distance:", edit_distance, file=f)
+            print("Edit score:", edit_score, file=f)
 
         # save accuracy plot for each class
         confusion_np = df.values
@@ -384,36 +399,44 @@ class Exp_Informer(Exp_Basic):
 
         return
 
-    #predict下面可以看到是对整个的dataloader进行了历遍，所以predict函数只调用一次，
-    #对整个xx数据集进行了预测，同时将结果储存了下来，保存为了npy，注意其中的子处理函数是process_one_batch
-    #之后将每一个batch的数据相加了起来
+    # setting是在外面生成的
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')
-        
+
+
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path+'/'+'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
+            self.model.load_state_dict(torch.load(best_model_path)).to(self.device)
 
         self.model.eval()
-        
-        preds = []
-        
-        for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(pred_loader):
-            pred, true = self._process_one_batch(
-                pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
 
-        preds = np.array(preds)
-        #交换了后两个维度顺序，现在是(batch_size, feature, pred_len)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        predict_list = []
+        label_list = []
+        correct, total = 0, 0
+        for i, (batch_x, batch_y) in enumerate(pred_loader):
+            pred = self._process_one_batch(batch_x)
+            pred = F.log_softmax(pred, dim=1).argmax(dim=1)
+            true = batch_y.to(self.device)
+            total += true.size(0)  # 统计了batch_size
+            correct += (pred == true).sum().item()
+            predict_list += pred.tolist()
+            label_list += batch_y.tolist()
+
+
         
         # result save
-        folder_path = './results/' + setting +'/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-        
-        np.save(folder_path+'real_prediction.npy', preds)
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path)
+
+        with open(self.folder_path+'predict.pkl', 'wb') as f:
+            pickle.dump(predict_list, f)
+
+        with open(self.folder_path+'label.pkl', 'wb') as f:
+            pickle.dump(label_list, f)
+
+        plot_color_code(predict_list, self.folder_path, 'predict_color_code')
+        plot_color_code(label_list, self.folder_path, 'label_color_code')
         
         return
 

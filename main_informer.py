@@ -34,7 +34,7 @@ parser.add_argument('--attn', type=str, default='prob', help='attention used in 
 parser.add_argument('--embed', type=str, default='timeF', help='time features encoding, options:[timeF, fixed, learned]') #注意这里默认就是timefix
 parser.add_argument('--activation', type=str, default='gelu',help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+parser.add_argument('--do_predict', type=int, default=0, help='whether to predict unseen future data')
 parser.add_argument('--mix', action='store_false', help='use mix attention in generative decoder', default=True)
 parser.add_argument('--cols', type=str, nargs='+', help='certain cols from the data files as the input features')
 parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
@@ -73,18 +73,18 @@ data_parser = {
     'jigsaw_np':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     'jigsaw_su':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':3},
     # gesture分类问题，只使用了运动学数据
-    'jigsaw_kt_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
-    'jigsaw_np_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
-    'jigsaw_su_g':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_kt_g':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
+    'jigsaw_np_g':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
+    'jigsaw_su_g':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
     # gesture分类问题，只使用了图像数据
     # 对于视觉来说只有一个维度，不像运动学数据可能会同时用好几个的
     'jigsaw_kt_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
     'jigsaw_np_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
     'jigsaw_su_gv':{'folder':'./data/jigsaw/','enc_in':1,'c_out':1,'num_classes':11},
     # 同时使用了运动学和图像数据
-    'jigsaw_kt_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
-    'jigsaw_np_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
-    'jigsaw_su_gvk':{'folder':'./data/jigsaw/','enc_in':10,'c_out':1,'num_classes':11},
+    'jigsaw_kt_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
+    'jigsaw_np_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
+    'jigsaw_su_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
 
 }
 
@@ -110,7 +110,7 @@ Exp = Exp_Informer
 
 for ii in range(args.itr):
     # setting record of experiments
-    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss{}'.format(args.model, args.task,
+    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss_{}'.format(args.model, args.task,
                 args.seq_len,
                 args.d_model, args.n_heads, args.e_layers, args.d_ff, args.attn, args.factor,
                 args.embed, args.distil, args.mix, args.des, ii, args.train_epochs, args.loss)
@@ -122,8 +122,8 @@ for ii in range(args.itr):
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
     exp.test(setting)
 
-    # if args.do_predict:
-    #     print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-    #     exp.predict(setting, True)
+    if args.do_predict:
+        print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.predict(setting, False)
 
     torch.cuda.empty_cache()

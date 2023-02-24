@@ -28,8 +28,6 @@ class Dataset_jigsaw_gvk(Dataset):
         self.task = task
 
         # init
-        # pred是我自己加的，原本他是写在了不同的dataset里面，现在我直接给写到同一个里面去了，下面pred_ds里面是对本次读取到的所有数据scale了一下，这样应该不存在信息泄漏吧
-        type_map = {'train': 0, 'val': 1, 'test': 2, 'pred':3 }
         self.flag = flag
 
         self.scale = scale
@@ -54,10 +52,18 @@ class Dataset_jigsaw_gvk(Dataset):
         label_list = []
         frame_list = []
         filename_l = []
-        #四分之一的采样率
-        for i in range(self.seq_len, df.shape[0], 4):
+        # 控制数据采样率
+        if self.flag == 'pred':
+            factor = 1
+        else:
+            factor = 4
+        for i in range(self.seq_len, df.shape[0], factor):
             if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
-                continue
+                if self.flag == 'pred':
+                    #如果是pred的话就值使用第一个file作为预测
+                    break
+                else:
+                    continue
             # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
             val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy()
@@ -94,11 +100,11 @@ class Dataset_jigsaw_gvk(Dataset):
             # 利用scaler来正则化数据，注意这里使用的是fit
             # 之后利用transform来生成data，注意fit时候是使用的整个train_data，而生成的数据是对整个df，这个符合我们正常的理解，注意这里是borders  ：
             # 因为我们训练时候只能观测到train部分的数据，所以正则化是基于train来做的，然后应用到整个数据中去
-            self.scaler.fit(x_train)
+            self.scaler.fit(x_train['value list'])
             # 在这里直接给划分开来：划分成train，test，pred三种
             # ndarray不需要value,df才需要
             if self.flag == 'train':
-                self.data_x = self.scaler.transform(x_train)
+                self.data_x = self.scaler.transform(x_train['value list'])
                 self.data_y = y_train
                 self.ds_len = len(y_train)
             elif self.flag == 'val':
@@ -109,6 +115,11 @@ class Dataset_jigsaw_gvk(Dataset):
                 self.data_x = self.scaler.transform(x_test)
                 self.data_y = y_test
                 self.ds_len = len(y_test)
+            elif self.flag == 'pred':
+                self.data_x = self.scaler.transform(self.x_data_trn)
+                self.data_y = self.enc.transform(self.x_data_trn['gesture'])
+                self.ds_len = len(self.data_y)
+
         else:
             if self.flag == 'train':
                 self.data_x = x_train
@@ -122,6 +133,10 @@ class Dataset_jigsaw_gvk(Dataset):
                 self.data_x = x_test
                 self.data_y = y_test
                 self.ds_len = len(y_test)
+            elif self.flag == 'pred':
+                self.data_x = self.x_data_trn
+                self.data_y = self.enc.transform(self.x_data_trn['gesture'])
+                self.ds_len = len(self.data_y)
         end = 1
 
     # 最后输出分别是data,label,以及time_stamp的data和label
@@ -135,7 +150,7 @@ class Dataset_jigsaw_gvk(Dataset):
                 img = transform_train(img)
             elif self.flag == 'val':
                 img = transform_test(img)
-            elif self.flag == 'test':
+            elif self.flag == 'test' or self.flag == 'pred':
                 img = transform_test(img)
             img.permute(2, 0, 1)
             img = img.to(torch.float)

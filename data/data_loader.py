@@ -286,7 +286,7 @@ class Dataset_jigsaw(Dataset):
             if df.iloc[i]['label'] != df.iloc[i+self.seq_len]['label']:
                 continue
             # 10是因为第11列开始才是有效数据，详情请看dataloader里面写的
-            val = df.iloc[i:i + self.seq_len, 10:10 + self.enc_in].to_numpy()
+            val = df.iloc[i:i + self.seq_len, 11:11 + self.enc_in].to_numpy()
             label = df.iloc[i]['label']
             val_list.append(val)
             label_list.append(label)
