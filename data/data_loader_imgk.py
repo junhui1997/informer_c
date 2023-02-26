@@ -8,7 +8,7 @@ from utils.tools import get_fold
 # from sklearn.preprocessing import StandardScaler
 from PIL import Image
 
-from utils.tools import StandardScaler
+from utils.tools import StandardScaler_classification
 from data.transform_list import transform_train,transform_test
 
 
@@ -33,7 +33,7 @@ class Dataset_jigsaw_gvk(Dataset):
         self.scale = scale
         self.inverse = inverse
         self.enc = LabelEncoder()
-        self.scaler = StandardScaler()
+        self.scaler = StandardScaler_classification()
         self.prepare_data()
         self.__read_data__()
 
@@ -56,7 +56,7 @@ class Dataset_jigsaw_gvk(Dataset):
         if self.flag == 'pred':
             factor = 1
         else:
-            factor = 4
+            factor = 40
         for i in range(self.seq_len, df.shape[0], factor):
             if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
                 if self.flag == 'pred':
@@ -66,7 +66,7 @@ class Dataset_jigsaw_gvk(Dataset):
                     continue
             # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
-            val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy()
+            val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy().astype('float64')
             frame = df.iloc[i]['frame']
             filename = df.iloc[i]['file_name'].split('.')[0]
             label = df.iloc[i]['gesture']
@@ -94,17 +94,16 @@ class Dataset_jigsaw_gvk(Dataset):
         # x_val, x_test, y_val, y_test = train_test_split(x_vt, y_vt, test_size=0.5)
 
         # 在这里先没有考虑seq_len,对于这个数据集来说最长是128
-        self.scale = False
         if self.scale:
             # 划定了train data的范围
             # 利用scaler来正则化数据，注意这里使用的是fit
             # 之后利用transform来生成data，注意fit时候是使用的整个train_data，而生成的数据是对整个df，这个符合我们正常的理解，注意这里是borders  ：
             # 因为我们训练时候只能观测到train部分的数据，所以正则化是基于train来做的，然后应用到整个数据中去
-            self.scaler.fit(x_train['value list'])
+            self.scaler.fit(x_train, 'value list')
             # 在这里直接给划分开来：划分成train，test，pred三种
             # ndarray不需要value,df才需要
             if self.flag == 'train':
-                self.data_x = self.scaler.transform(x_train['value list'])
+                self.data_x = self.scaler.transform(x_train)
                 self.data_y = y_train
                 self.ds_len = len(y_train)
             elif self.flag == 'val':

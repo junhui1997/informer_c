@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 from matplotlib.collections import PatchCollection
-def plot_color_code(x,folder_path,file_name):
-    cmap = plt.cm.get_cmap('rainbow', max(x) + 1)
+def plot_color_code(x,folder_path,file_name,num_color):
+    cmap = plt.cm.get_cmap('rainbow', num_color+ 1)
     # 绘制长方形带状条
     fig, ax = plt.subplots(figsize=(12, 1))
     ax.set_xlim(0, 10)

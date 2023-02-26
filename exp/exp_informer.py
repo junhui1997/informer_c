@@ -299,7 +299,7 @@ class Exp_Informer(Exp_Basic):
 
             adjust_learning_rate(model_optim, epoch+1, self.args, scheduler, vali_loss)
 
-        # 最后时候给加载上去
+        # 最后时候给加载上去,self.model最后保存了最好的结果
         best_model_path = path+'/'+'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
         print('best accuracy is ', best_accuracy)
@@ -435,8 +435,8 @@ class Exp_Informer(Exp_Basic):
         with open(self.folder_path+'label.pkl', 'wb') as f:
             pickle.dump(label_list, f)
 
-        plot_color_code(predict_list, self.folder_path, 'predict_color_code')
-        plot_color_code(label_list, self.folder_path, 'label_color_code')
+        plot_color_code(predict_list, self.folder_path, 'predict_color_code', self.args.num_classes)
+        plot_color_code(label_list, self.folder_path, 'label_color_code', self.args.num_classes)
         
         return
 

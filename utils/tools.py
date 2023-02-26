@@ -101,8 +101,32 @@ class StandardScaler():
             std = std[-1:]
         return (data * std) + mean
 
+
+class StandardScaler_classification():
+    def __init__(self):
+        self.mean = 0.
+        self.std = 1.
+
+    def fit(self, df, col_name):
+        all_array = None
+        self.col_name = col_name
+        for i in range(len(df[self.col_name])):
+            if all_array is None:
+                all_array = df[self.col_name].iloc[i]
+            else:
+                all_array = np.append(all_array, df[self.col_name].iloc[i], axis=0)
+        self.mean = all_array.mean(0)
+        self.std = all_array.std(0)
+
+    def transform(self, df):
+        df[self.col_name] = df[self.col_name].apply(lambda x: (x - self.mean) / self.std)
+        return df
+
+
+# 在同一次程序里面get_fold返回的df是一致的，避免了信息泄漏
 def get_fold(df_kfold,folds,key_name):
-    kfolder = StratifiedKFold(n_splits=folds, shuffle=True, random_state=719)
+    random_state = int(np.sqrt(torch.initial_seed()))
+    kfolder = StratifiedKFold(n_splits=folds, shuffle=True, random_state=random_state)
     df_kfold[key_name] = df_kfold[key_name].apply(str)
     val_indices = [val_indices for _, val_indices in kfolder.split(df_kfold[key_name], df_kfold[key_name])]
     df_kfold['fold'] = -1
