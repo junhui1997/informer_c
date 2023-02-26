@@ -357,7 +357,7 @@ class Dataset_jigsaw(Dataset):
 
 class Dataset_jigsaw_g(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
+                 enc_in=5, scale=False, inverse=False, cols=None,task='jigsaw_kt_g'):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
@@ -384,16 +384,40 @@ class Dataset_jigsaw_g(Dataset):
             df = pd.read_pickle(folder+'Needle_Passing.pkl')
         elif self.task == 'jigsaw_su_g':
             df = pd.read_pickle(folder+'Suturing.pkl')
+
+        len_file = len(df['file_name'].unique())
+        file_names = df['file_name'].unique()
+        train_ratio = 0.8
+        val_ratio = 0.9
+        train_files = file_names[0:int(train_ratio * len_file)]
+        val_files = file_names[int(train_ratio * len_file):int(val_ratio * len_file)]
+        test_files = file_names[int(val_ratio * len_file):]
+        if self.flag == 'train':
+            self.files = train_files
+        elif self.flag == 'val':
+            self.files = val_files
+        elif self.flag == 'test':
+            self.files = test_files
+
+
+
+
+
+        #
+        df = df[df['file_name'].isin(self.files)]
+
         val_list = []
         label_list = []
+
         #四分之一的采样率
-        for i in range(self.seq_len, df.shape[0],4):
+        for i in range(self.seq_len, df.shape[0],2):
             if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
                 continue
             # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
             # 这里直接使用了最后一个点的gesture作为label来计算的
             val = df.iloc[i - self.seq_len:i, 11:11 + self.enc_in].to_numpy()
             label = df.iloc[i]['gesture']
+            file_name = df.iloc[i]['file_name']
             val_list.append(val)
             label_list.append(label)
         self.x_data_trn = pd.DataFrame({"value list": val_list, "gesture": label_list})
@@ -402,52 +426,44 @@ class Dataset_jigsaw_g(Dataset):
 
     def __read_data__(self):
         # train val test 0.8:0.1:0.1
-        num_fold = 10
-        df_kflod = get_fold(self.x_data_trn, num_fold, 'gesture')
-        x_train = df_kflod.loc[(df_kflod['fold'] <= 7)]
-        x_test = df_kflod.loc[(df_kflod['fold'] == 8)]
-        x_val = df_kflod.loc[(df_kflod['fold'] == 9)]
-        y_train = self.enc.transform(x_train['gesture'])
-        y_test = self.enc.transform(x_test['gesture'])
-        y_val = self.enc.transform(x_val['gesture'])
-        # # vt:val&test
-        # x_train, x_vt, y_train, y_vt = train_test_split(self.x_data_trn, self.y_enc, test_size=0.2)
-        # x_val, x_test, y_val, y_test = train_test_split(x_vt, y_vt, test_size=0.5)
+        self.data_x = self.x_data_trn
+        self.data_y = self.enc.transform(self.x_data_trn['gesture'])
+        self.ds_len = len(self.data_y)
 
         # 在这里先没有考虑seq_len,对于这个数据集来说最长是128
-        if self.scale:
-            # 划定了train data的范围
-            # 利用scaler来正则化数据，注意这里使用的是fit
-            # 之后利用transform来生成data，注意fit时候是使用的整个train_data，而生成的数据是对整个df，这个符合我们正常的理解，注意这里是borders  ：
-            # 因为我们训练时候只能观测到train部分的数据，所以正则化是基于train来做的，然后应用到整个数据中去
-            self.scaler.fit(x_train, "value list")
-            # 在这里直接给划分开来：划分成train，test，pred三种
-            # ndarray不需要value,df才需要
-            if self.flag == 'train':
-                self.data_x = self.scaler.transform(x_train)
-                self.data_y = y_train
-                self.ds_len = len(y_train)
-            elif self.flag == 'val':
-                self.data_x = self.scaler.transform(x_val)
-                self.data_y = y_val
-                self.ds_len = len(y_val)
-            elif self.flag == 'test':
-                self.data_x = self.scaler.transform(x_test)
-                self.data_y = y_test
-                self.ds_len = len(y_test)
-        else:
-            if self.flag == 'train':
-                self.data_x = x_train
-                self.data_y = y_train
-                self.ds_len = len(y_train)
-            elif self.flag == 'val':
-                self.data_x = x_val
-                self.data_y = y_val
-                self.ds_len = len(y_val)
-            elif self.flag == 'test':
-                self.data_x = x_test
-                self.data_y = y_test
-                self.ds_len = len(y_test)
+        # if self.scale:
+        #     # 划定了train data的范围
+        #     # 利用scaler来正则化数据，注意这里使用的是fit
+        #     # 之后利用transform来生成data，注意fit时候是使用的整个train_data，而生成的数据是对整个df，这个符合我们正常的理解，注意这里是borders  ：
+        #     # 因为我们训练时候只能观测到train部分的数据，所以正则化是基于train来做的，然后应用到整个数据中去
+        #     self.scaler.fit(x_train, "value list")
+        #     # 在这里直接给划分开来：划分成train，test，pred三种
+        #     # ndarray不需要value,df才需要
+        #     if self.flag == 'train':
+        #         self.data_x = self.scaler.transform(x_train)
+        #         self.data_y = y_train
+        #         self.ds_len = len(y_train)
+        #     elif self.flag == 'val':
+        #         self.data_x = self.scaler.transform(x_val)
+        #         self.data_y = y_val
+        #         self.ds_len = len(y_val)
+        #     elif self.flag == 'test':
+        #         self.data_x = self.scaler.transform(x_test)
+        #         self.data_y = y_test
+        #         self.ds_len = len(y_test)
+        # else:
+        #     if self.flag == 'train':
+        #         self.data_x = x_train
+        #         self.data_y = y_train
+        #         self.ds_len = len(y_train)
+        #     elif self.flag == 'val':
+        #         self.data_x = x_val
+        #         self.data_y = y_val
+        #         self.ds_len = len(y_val)
+        #     elif self.flag == 'test':
+        #         self.data_x = x_test
+        #         self.data_y = y_test
+        #         self.ds_len = len(y_test)
         end = 1
 
     # 最后输出分别是data,label,以及time_stamp的data和label
