@@ -398,12 +398,6 @@ class Dataset_jigsaw_g(Dataset):
             self.files = val_files
         elif self.flag == 'test':
             self.files = test_files
-
-
-
-
-
-        #
         df = df[df['file_name'].isin(self.files)]
 
         val_list = []
