@@ -74,7 +74,7 @@ class Dataset_jigsaw_gv(Dataset):
         filename_l = []
 
         #四分之一的采样率
-        for i in range(self.seq_len, df.shape[0], 4):
+        for i in range(self.seq_len, df.shape[0], 60):
             if df.iloc[i - self.seq_len]['file_name'] != df.iloc[i]['file_name']:
                 continue
             # 11是因为第12列开始才是有效数据，详情请看dataloader里面写的
