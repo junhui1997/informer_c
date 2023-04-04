@@ -85,6 +85,10 @@ data_parser = {
     'jigsaw_kt_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
     'jigsaw_np_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
     'jigsaw_su_gvk':{'folder':'./data/jigsaw/','enc_in':76,'c_out':1,'num_classes':11},
+    # tunel rob data
+    'tunel_kv':{'folder':'./no_use','enc_in':4,'c_out':1,'num_classes':4},
+    'tunel_k':{'folder':'./no_use','enc_in':4,'c_out':1,'num_classes':4},
+    'tunel_v':{'folder':'./no_use','enc_in':4,'c_out':1,'num_classes':4},
 
 }
 

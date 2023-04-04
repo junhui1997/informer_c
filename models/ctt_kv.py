@@ -17,13 +17,13 @@ from module_box.token_learner import token_learner
 """
 
 
-class ctt_gv(nn.Module):
+class ctt_kv(nn.Module):
     def __init__(self, enc_in, c_out, seq_len,
                  factor=5, d_model=512, n_heads=8, e_layers=3, d_ff=512,
                  dropout=0.0, attn='prob', embed='fixed', activation='gelu',
                  output_attention=False, distil=True, mix=True,
                  device=torch.device('cuda:0'), num_classes=1):
-        super(ctt_gv, self).__init__()
+        super(ctt_kv, self).__init__()
 
         self.s = 8
         self.cnn_feature = cnn_feature()

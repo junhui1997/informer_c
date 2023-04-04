@@ -1,10 +1,11 @@
 from data.data_loader import Dataset_ETT_hour,Dataset_rob,Dataset_jigsaw,Dataset_jigsaw_g
+from data.data_loader_tunel import Dataset_tunel_kv
 from data.data_loader_img import Dataset_jigsaw_gv
 from data.data_loader_imgk import Dataset_jigsaw_gvk
 from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 from models.ctt import ctt
-from models.ctt_gv import ctt_gv
+from models.ctt_kv import ctt_kv
 from module_box.all_loss import focal_loss
 from module_box.edit_score_dist import calculate_edit_score
 from module_box.all_plot import plot_color_code
@@ -45,7 +46,7 @@ class Exp_Informer(Exp_Basic):
             'informer':Informer,
             'informerstack':InformerStack,
             'ctt': ctt,
-            'ctt_gv':ctt_gv
+            'ctt_kv':ctt_kv
         }
         if self.args.model in model_dict.keys():
             # s_layer的作用是？普通的e_layer是encoder layer的数目，而对于s来说是3,2,1这样的话是怎么看呢，number of stack encoder layer
@@ -109,6 +110,9 @@ class Exp_Informer(Exp_Basic):
             'jigsaw_kt_gvk': Dataset_jigsaw_gvk,
             'jigsaw_np_gvk': Dataset_jigsaw_gvk,
             'jigsaw_su_gvk': Dataset_jigsaw_gvk,
+            'tunel_kv': Dataset_tunel_kv,
+            'tunel_v': Dataset_tunel_kv,
+            'tunel_k': Dataset_tunel_kv,
 
         }
         # 注意data这里还没有完成实例化，完成实例化之后再调用instance
