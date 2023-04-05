@@ -16,13 +16,13 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # 对于视觉任务不考虑enc_in
-# 两个capture感觉区别不大啊，直接使用其中一个跑跑，事后再使用另一个跑
+# seq_len在这里就是seq_lenv
 class Dataset_jigsaw_gv(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
+                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g', args=None):
         # size [seq_len, label_len, pred_len]
         # info
-        self.seq_len = size
+        self.seq_len = args.seq_lenv
         self.seq_len2 = self.seq_len**2
         self.enc_in = enc_in
         self.task = task

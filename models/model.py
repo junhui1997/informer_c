@@ -19,7 +19,7 @@ class Informer(nn.Module):
                 factor=5, d_model=512, n_heads=8, e_layers=3, d_ff=512,
                 dropout=0.0, attn='prob', embed='fixed', activation='gelu',
                 output_attention = False, distil=True, mix=True,
-                device=torch.device('cuda:0'),num_classes=1):
+                device=torch.device('cuda:0'),num_classes=1, args=None):
         super(Informer, self).__init__()
 
         # attn这里是选择不同的attention，一共有两种一种是普通的attention一种是prob attention

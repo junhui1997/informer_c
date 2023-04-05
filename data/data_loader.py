@@ -18,105 +18,7 @@ warnings.filterwarnings('ignore')
 """
     这个df本身分布起来就是按照纵向是seq_len分布的，所以我之后处理时候可以参照一下
 """
-class Dataset_ETT_hour(Dataset):
-    def __init__(self, root_path, flag='train', size=None, 
-                 features='S', data_path='ETTh1.csv', 
-                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', cols=None):
-        # size [seq_len, label_len, pred_len]
-        # info
-        if size == None:
-            self.seq_len = 24*4*4
-            self.label_len = 24*4
-            self.pred_len = 24*4
-        else:
-            self.seq_len = size[0]
-            self.label_len = size[1]
-            self.pred_len = size[2]
-        # init
 
-        type_map = {'train':0, 'val':1, 'test':2}
-        self.set_type = type_map[flag]
-        
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.inverse = inverse
-        self.timeenc = timeenc
-        self.freq = freq
-        
-        self.root_path = root_path
-        self.data_path = data_path
-        self.__read_data__()
-
-    def __read_data__(self):
-        self.scaler = StandardScaler()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        #通过border来划分了不同的train，test_val数据，简单粗暴的截取成了三段!!这里并没有做shuffle
-        border1s = [0, 12*30*24 - self.seq_len, 12*30*24+4*30*24 - self.seq_len]
-        border2s = [12*30*24, 12*30*24+4*30*24, 12*30*24+8*30*24]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-        
-        if self.features=='M' or self.features=='MS':
-            # 忽略了datetime，提取出了所有columns的name，注意默认feature是M
-            # 提取了除datetime外的数据
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features=='S':
-            #一对一时候使用了target进行预测
-            df_data = df_raw[[self.target]]
-
-        if self.scale:
-            # 划定了train data的范围
-            # 利用scaler来正则化数据，注意这里使用的是fit
-            # 之后利用transform来生成data，注意fit时候是使用的整个train_data，而生成的数据是对整个df，这个符合我们正常的理解，注意这里是borders  ：
-            # 因为我们训练时候只能观测到train部分的数据，所以正则化是基于train来做的，然后应用到整个数据中去
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
-            data = self.scaler.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        # 没仔细看，总之是将一个日期给转换成了一个数字进行编码
-        df_stamp = df_raw[['date']][border1:border2]
-        df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
-        #data_x就是训练数据集
-        self.data_x = data[border1:border2]
-
-        #if inverse这里是使用的原始数据，不然使用的是正则化之后的数据
-        if self.inverse:
-            self.data_y = df_data.values[border1:border2]
-        else:
-            self.data_y = data[border1:border2]
-        self.data_stamp = data_stamp
-
-    #最后输出分别是data,label,以及time_stamp的data和label
-    def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end - self.label_len 
-        r_end = r_begin + self.label_len + self.pred_len
-
-        seq_x = self.data_x[s_begin:s_end]
-        if self.inverse:
-            seq_y = np.concatenate([self.data_x[r_begin:r_begin+self.label_len], self.data_y[r_begin+self.label_len:r_end]], 0)
-        else:
-            seq_y = self.data_y[r_begin:r_end]
-        seq_x_mark = self.data_stamp[s_begin:s_end]
-        seq_y_mark = self.data_stamp[r_begin:r_end]
-        #(seq_len96,7),(label_len+pred_len72,7),(seq_len96,4),(label_len+pred_len72,4)
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
-    
-    def __len__(self):
-        # 通过border来划分的生成的不同的data_x
-        return len(self.data_x) - self.seq_len- self.pred_len + 1
-
-    def inverse_transform(self, data):
-        #scaler写在self里面即可
-        return self.scaler.inverse_transform(data)
 
 
 def create_grouped_array(data, group_col='series_id', drop_cols=['series_id', 'measurement_number']):
@@ -127,7 +29,7 @@ def create_grouped_array(data, group_col='series_id', drop_cols=['series_id', 'm
 
 class Dataset_rob(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=True, inverse=False, cols=None, task=''):
+                 enc_in=5, scale=True, inverse=False, cols=None, task='', args=None):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
@@ -252,7 +154,7 @@ class Dataset_rob(Dataset):
 
 class Dataset_jigsaw(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt'):
+                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt', args=None):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
@@ -357,7 +259,7 @@ class Dataset_jigsaw(Dataset):
 
 class Dataset_jigsaw_g(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=False, inverse=False, cols=None,task='jigsaw_kt_g'):
+                 enc_in=5, scale=False, inverse=False, cols=None,task='jigsaw_kt_g', args=None):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size

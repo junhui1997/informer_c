@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 # 两个capture感觉区别不大啊，直接使用其中一个跑跑，事后再使用另一个跑
 class Dataset_jigsaw_gvk(Dataset):
     def __init__(self, flag='train', size=48,
-                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g'):
+                 enc_in=5, scale=True, inverse=False, cols=None,task='jigsaw_kt_g', args=None):
         # size [seq_len, label_len, pred_len]
         # info
         self.seq_len = size
@@ -142,7 +142,7 @@ class Dataset_jigsaw_gvk(Dataset):
     def __getitem__(self, index):
         imgs = None
         for i in range(self.seq_lenv):
-            file_name = "{}_capture1_frame_{}".format(self.data_x.iloc[index]['file_name'], int(self.data_x.iloc[index]['frame'])-self.seq_len+i)
+            file_name = "{}_capture1_frame_{}".format(self.data_x.iloc[index]['file_name'], int(self.data_x.iloc[index]['frame'])-self.seq_lenv+i)
             img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder, file_name)))
             img = img / 255
             if self.flag == 'train':

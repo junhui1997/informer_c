@@ -1,4 +1,4 @@
-from data.data_loader import Dataset_ETT_hour,Dataset_rob,Dataset_jigsaw,Dataset_jigsaw_g
+from data.data_loader import Dataset_rob,Dataset_jigsaw,Dataset_jigsaw_g
 from data.data_loader_tunel import Dataset_tunel_kv
 from data.data_loader_img import Dataset_jigsaw_gv
 from data.data_loader_imgk import Dataset_jigsaw_gvk
@@ -70,7 +70,8 @@ class Exp_Informer(Exp_Basic):
                 self.args.distil,
                 self.args.mix,
                 self.device,
-                self.args.num_classes
+                self.args.num_classes,
+                self.args
             ).float()
 
 
@@ -132,7 +133,8 @@ class Exp_Informer(Exp_Basic):
             enc_in=args.enc_in,
             inverse=args.inverse,
             cols=args.cols,
-            task=args.task
+            task=args.task,
+            args=args
         )
         print(flag, len(data_set))
         data_loader = DataLoader(

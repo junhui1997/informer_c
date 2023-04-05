@@ -14,6 +14,7 @@ parser.add_argument('--task', type=str, required=True, default='navi_rob', help=
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length of Informer encoder')
+parser.add_argument('--seq_lenv', type=int, default=3, help='input sequence length of vision encoder')
 parser.add_argument('--show_para',  type=int, default=0, help='show model parameter and calculate the size of memory')
 
 

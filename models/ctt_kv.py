@@ -8,7 +8,7 @@ from models.decoder import Decoder, DecoderLayer
 from models.attn import FullAttention, ProbAttention, AttentionLayer
 from models.embed import DataEmbedding
 from models.classification_head import ClassificationHead
-from module_box.feature_extraction import cnn_feature
+from module_box.feature_extraction import cnn_feature,cnn_feature50
 from module_box.token_learner import token_learner
 
 """
@@ -22,11 +22,12 @@ class ctt_kv(nn.Module):
                  factor=5, d_model=512, n_heads=8, e_layers=3, d_ff=512,
                  dropout=0.0, attn='prob', embed='fixed', activation='gelu',
                  output_attention=False, distil=True, mix=True,
-                 device=torch.device('cuda:0'), num_classes=1):
+                 device=torch.device('cuda:0'), num_classes=1, args=None):
         super(ctt_kv, self).__init__()
 
         self.s = 8
-        self.cnn_feature = cnn_feature()
+        self.cnn_feature = cnn_feature(grad=True)
+        #self.cnn_feature = cnn_feature50(grad=True)
         self.token_learner = token_learner(S=self.s)
         self.device = device
 
