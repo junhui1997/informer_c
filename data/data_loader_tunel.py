@@ -128,10 +128,10 @@ class Dataset_tunel_kv(Dataset):
         if self.task == 'tunel_kv' or self.task == 'tunel_v':
             for i in range(self.seq_lenv):
                 time_stamp = change_time(self.data_x.iloc[index]['time_stamp'], -self.seq_lenv+i)
-                img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder_2d, time_stamp)))
+                img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder_3d, time_stamp)))
                 img = img / 255
                 if self.flag == 'train':
-                    img = transform_train(img)
+                    img = transform_test(img)
                 elif self.flag == 'val':
                     img = transform_test(img)
                 elif self.flag == 'test' or self.flag == 'pred':
