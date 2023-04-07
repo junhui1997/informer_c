@@ -42,6 +42,7 @@ class Dataset_tunel_kv(Dataset):
         self.seq_len = size
         #self.seq_lenv = int(self.seq_len**(0.5))
         self.seq_lenv = args.seq_lenv
+        self.args = args
         self.enc_in = enc_in
         self.task = task
 
@@ -142,6 +143,21 @@ class Dataset_tunel_kv(Dataset):
                 if imgs is None:
                     imgs = img
                 else:
+                    imgs = torch.cat((imgs, img), dim=0)
+            if self.args.dual_img:
+                for i in range(self.seq_lenv):
+                    time_stamp = change_time(self.data_x.iloc[index]['time_stamp'], -self.seq_lenv + i)
+                    img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder_3d, time_stamp)))
+                    img = img / 255
+                    if self.flag == 'train':
+                        img = transform_test(img)
+                    elif self.flag == 'val':
+                        img = transform_test(img)
+                    elif self.flag == 'test' or self.flag == 'pred':
+                        img = transform_test(img)
+                    img.permute(2, 0, 1)
+                    img = img.to(torch.float)
+                    img = img.unsqueeze(0)
                     imgs = torch.cat((imgs, img), dim=0)
 
         if self.task == 'tunel_kv' or self.task == 'tunel_k':

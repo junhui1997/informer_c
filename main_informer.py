@@ -54,6 +54,8 @@ parser.add_argument('--use_gpu', type=int, default=1, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
 parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of multile gpus')
+parser.add_argument('--dual_img', type=int, default=0, help='use images from two source')
+parser.add_argument('--s', type=int, default=8, help='num of token learner')
 
 args = parser.parse_args()
 

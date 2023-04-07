@@ -25,10 +25,16 @@ class ctt_kv(nn.Module):
                  device=torch.device('cuda:0'), num_classes=1, args=None):
         super(ctt_kv, self).__init__()
 
-        self.s = 8
+        self.s = args.s
+        self.args =args
         self.cnn_feature = cnn_feature(grad=True)
         #self.cnn_feature = cnn_feature50(grad=True)
         self.token_learner = token_learner(S=self.s)
+        # for mutiple input
+        if args.dual_img:
+            seq_lenv = args.seq_lenv*2
+        self.cnn_features = nn.ModuleList([cnn_feature(grad=True) for _ in range(seq_lenv)])
+        self.token_learners = nn.ModuleList([token_learner(S=self.s) for _ in range(seq_lenv)])
         self.device = device
 
         # attn这里是选择不同的attention，一共有两种一种是普通的attention一种是prob attention
@@ -101,10 +107,11 @@ class ctt_kv(nn.Module):
         x_features = torch.Tensor(batch_size, seq_len*self.s, 512).to(self.device)
         for i in range(seq_len):
             # x_feature在token learner之后是[batch_size,self.s,512]
-            x_feature = self.cnn_feature(x_img[:, i, :, :, :])
-            x_feature = self.token_learner(x_feature)
+            x_feature = self.cnn_features[i](x_img[:, i, :, :, :])
+            x_feature = self.token_learners[i](x_feature)
             x_features[:, i*self.s:(i+1)*self.s, :] = x_feature
 
+        #x_features = x_features[:, :self.args.seq_lenv*self.s, :]+x_features[:, self.args.seq_lenv*self.s:, :]
         x_kine = self.kine_enc_embedding(x_kine)
         x_kine, kine_attn = self.kine_encoder(x_kine)
         x_fu = torch.cat((x_features,x_kine), dim=1)
