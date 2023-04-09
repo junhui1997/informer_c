@@ -98,8 +98,8 @@ class Dataset_tunel_kv(Dataset):
         num_fold = 10
         df_kflod = get_fold(self.x_data_trn, num_fold, 'label')
         x_train = df_kflod.loc[(df_kflod['fold'] <= 7)]
-        x_test = df_kflod.loc[(df_kflod['fold'] == 8)]
-        x_val = df_kflod.loc[(df_kflod['fold'] == 9)]
+        x_test = df_kflod.loc[(df_kflod['fold'] == 9)]
+        x_val = df_kflod.loc[(df_kflod['fold'] == 8)]
         y_train = self.enc.transform(x_train['label'])
         y_test = self.enc.transform(x_test['label'])
         y_val = self.enc.transform(x_val['label'])

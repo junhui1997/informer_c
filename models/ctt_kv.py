@@ -10,7 +10,7 @@ from models.embed import DataEmbedding
 from models.classification_head import ClassificationHead
 from module_box.feature_extraction import cnn_feature,cnn_feature50
 from module_box.token_learner import token_learner
-
+from module_box.weighted_sum import WeightedSum
 """
     这里c_out决定了输出是多少
     这里我理解的是，如果是MS的话是所有的来去预测OT这项指标，不然的话就是多对多分别去预测
@@ -33,6 +33,7 @@ class ctt_kv(nn.Module):
         # for mutiple input
         if args.dual_img:
             seq_lenv = args.seq_lenv*2
+            self.weighted_sum = WeightedSum(self.args.seq_lenv*self.s, d_model)
         self.cnn_features = nn.ModuleList([cnn_feature(grad=True) for _ in range(seq_lenv)])
         self.token_learners = nn.ModuleList([token_learner(S=self.s) for _ in range(seq_lenv)])
         self.device = device
@@ -110,8 +111,11 @@ class ctt_kv(nn.Module):
             x_feature = self.cnn_features[i](x_img[:, i, :, :, :])
             x_feature = self.token_learners[i](x_feature)
             x_features[:, i*self.s:(i+1)*self.s, :] = x_feature
-
-        #x_features = x_features[:, :self.args.seq_lenv*self.s, :]+x_features[:, self.args.seq_lenv*self.s:, :]
+        if self.args.dual_img:
+            #x_features = x_features[:, :self.args.seq_lenv*self.s, :]+x_features[:, self.args.seq_lenv*self.s:, :]
+            features_2d = x_features[:, :self.args.seq_lenv*self.s, :]
+            features_3d = x_features[:, self.args.seq_lenv*self.s:, :]
+            x_features = self.weighted_sum(features_2d,features_3d)
         x_kine = self.kine_enc_embedding(x_kine)
         x_kine, kine_attn = self.kine_encoder(x_kine)
         x_fu = torch.cat((x_features,x_kine), dim=1)

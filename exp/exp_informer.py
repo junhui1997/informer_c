@@ -155,7 +155,7 @@ class Exp_Informer(Exp_Basic):
     def _select_scheduler(self,optimizer):
         if self.args.lradj == 'type4':
             # patientce = 2,代表的是3次val 没有下降后开始降低learning rate
-            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8,patience=1)
+            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=1)
         else:
             scheduler = None
         return scheduler
@@ -206,6 +206,7 @@ class Exp_Informer(Exp_Basic):
         #这里相当于每一个都实例化了一次dataset和dataloader，这样如果dataset里面本身的要处理的信息就比较多的话会导致说重复创建牺牲很多性能
         train_data, train_loader = self._get_data(flag = 'train')
         vali_data, vali_loader = self._get_data(flag = 'val')
+        #test_data, test_loader = vali_data, vali_loader
         test_data, test_loader = self._get_data(flag = 'test')
         self.args.iterations_per_epoch = len(train_loader) # 这一项是为了控制cos_learningRate
 
