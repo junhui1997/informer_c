@@ -124,7 +124,7 @@ class Exp_Informer(Exp_Basic):
         if flag == 'test':
             shuffle_flag = False; drop_last = True; batch_size = args.batch_size;
         elif flag=='pred':
-            shuffle_flag = False; drop_last = False; batch_size = 1;
+            shuffle_flag = True; drop_last = False; batch_size = 1;
         else:
             shuffle_flag = True; drop_last = True; batch_size = args.batch_size;
         data_set = Data(
@@ -172,15 +172,16 @@ class Exp_Informer(Exp_Basic):
         self.model.eval()
         total_loss = []
         correct, total = 0, 0
-        for i, (batch_x, batch_y) in enumerate(vali_loader):
-            pred = self._process_one_batch(batch_x)
-            true = batch_y.to(self.device)
-            loss = criterion(pred.detach().cpu(), true.detach().cpu())
-            total_loss.append(loss)
-            # calculate accy
-            pred_idx = F.log_softmax(pred, dim=1).argmax(dim=1)
-            total += true.size(0)  # 统计了batch_size
-            correct += (pred_idx == true).sum().item()
+        with torch.no_grad():
+            for i, (batch_x, batch_y) in enumerate(vali_loader):
+                pred = self._process_one_batch(batch_x)
+                true = batch_y.to(self.device)
+                loss = criterion(pred.detach().cpu(), true.detach().cpu())
+                total_loss.append(loss)
+                # calculate accy
+                pred_idx = F.log_softmax(pred, dim=1).argmax(dim=1)
+                total += true.size(0)  # 统计了batch_size
+                correct += (pred_idx == true).sum().item()
 
         total_loss = np.average(total_loss)
         acc = correct / total
@@ -204,10 +205,10 @@ class Exp_Informer(Exp_Basic):
 
     def train(self, setting):
         #这里相当于每一个都实例化了一次dataset和dataloader，这样如果dataset里面本身的要处理的信息就比较多的话会导致说重复创建牺牲很多性能
-        train_data, train_loader = self._get_data(flag = 'train')
-        vali_data, vali_loader = self._get_data(flag = 'val')
+        train_data, train_loader = self._get_data(flag='train')
+        vali_data, vali_loader = self._get_data(flag='val')
         #test_data, test_loader = vali_data, vali_loader
-        test_data, test_loader = self._get_data(flag = 'test')
+        test_data, test_loader = self._get_data(flag='test')
         self.args.iterations_per_epoch = len(train_loader) # 这一项是为了控制cos_learningRate
 
         path = os.path.join(self.args.checkpoints, setting)
@@ -310,6 +311,7 @@ class Exp_Informer(Exp_Basic):
         best_model_path = path+'/'+'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
         print('best accuracy is ', best_accuracy)
+        self.val_acc = best_accuracy
         
         return self.model
 
@@ -365,6 +367,8 @@ class Exp_Informer(Exp_Basic):
             # 将print语句的输出写入文件中
             print("Edit distance:", edit_distance, file=f)
             print("Edit score:", edit_score, file=f)
+            print("val acc:", self.val_acc, file=f)
+            print("test acc:", acc, file=f)
 
         # save accuracy plot for each class
         confusion_np = df.values

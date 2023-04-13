@@ -35,7 +35,7 @@ parser.add_argument('--attn', type=str, default='prob', help='attention used in 
 parser.add_argument('--embed', type=str, default='timeF', help='time features encoding, options:[timeF, fixed, learned]') #注意这里默认就是timefix
 parser.add_argument('--activation', type=str, default='gelu',help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-parser.add_argument('--do_predict', type=int, default=0, help='whether to predict unseen future data')
+parser.add_argument('--do_predict', type=int, default=1, help='whether to predict unseen future data')
 parser.add_argument('--mix', action='store_false', help='use mix attention in generative decoder', default=True)
 parser.add_argument('--cols', type=str, nargs='+', help='certain cols from the data files as the input features')
 parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
@@ -117,11 +117,11 @@ Exp = Exp_Informer
 
 for ii in range(args.itr):
     # setting record of experiments
-    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss_{}'.format(args.model, args.task,
+    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss_{}_s{}_imgs{}'.format(args.model, args.task,
                 args.seq_len,
                 args.d_model, args.n_heads, args.e_layers, args.d_ff, args.attn, args.factor,
-                args.embed, args.distil, args.mix, args.des, ii, args.train_epochs, args.loss)
-
+                args.embed, args.distil, args.mix, args.des, ii, args.train_epochs, args.loss, args.s, args.dual_img)
+    args.random_state = int(seed**0.2)*(ii+1)
     exp = Exp(args) # set experiments
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
     exp.train(setting)

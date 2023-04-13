@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from utils.tools import get_fold
 # from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 from PIL import Image
 
 from utils.tools import StandardScaler_classification
@@ -94,18 +95,24 @@ class Dataset_tunel_kv(Dataset):
         self.class_name = self.enc.inverse_transform([i for i in range(len(self.x_data_trn['label'].unique()))])
 
     def __read_data__(self):
-        # train val test 0.8:0.1:0.1
-        num_fold = 10
-        df_kflod = get_fold(self.x_data_trn, num_fold, 'label')
-        x_train = df_kflod.loc[(df_kflod['fold'] <= 7)]
-        x_test = df_kflod.loc[(df_kflod['fold'] == 9)]
-        x_val = df_kflod.loc[(df_kflod['fold'] == 8)]
+        split_mode = 'k_flod'
+        split_mode = 'sk'
+        if split_mode == 'k_flod':
+            # train val test 0.8:0.1:0.1
+            num_fold = 10
+            df_kflod = get_fold(self.x_data_trn, num_fold, 'label')
+            x_train = df_kflod[df_kflod['fold'].isin([0, 1, 2, 3, 4, 5, 6, 7])]
+            x_test = df_kflod[df_kflod['fold'].isin([9])]
+            x_val = df_kflod[df_kflod['fold'].isin([8])]
+        else:
+            # # vt:val&test
+            seed = self.args.random_state
+            x_train, x_vt = train_test_split(self.x_data_trn, test_size=0.2, random_state=seed)
+            x_val, x_test = train_test_split(x_vt, test_size=0.5, random_state=seed)
+
         y_train = self.enc.transform(x_train['label'])
         y_test = self.enc.transform(x_test['label'])
         y_val = self.enc.transform(x_val['label'])
-        # # vt:val&test
-        # x_train, x_vt, y_train, y_vt = train_test_split(self.x_data_trn, self.y_enc, test_size=0.2)
-        # x_val, x_test, y_val, y_test = train_test_split(x_vt, y_vt, test_size=0.5)
 
         # 在这里先没有考虑seq_len,对于这个数据集来说最长是128
         if self.flag == 'train':
@@ -129,7 +136,7 @@ class Dataset_tunel_kv(Dataset):
         if self.task == 'tunel_kv' or self.task == 'tunel_v':
             for i in range(self.seq_lenv):
                 time_stamp = change_time(self.data_x.iloc[index]['time_stamp'], -self.seq_lenv+i)
-                img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder_3d, time_stamp)))
+                img = np.array(Image.open('{}/{}.jpg'.format(self.image_floder_2d, time_stamp)))
                 img = img / 255
                 if self.flag == 'train':
                     img = transform_test(img)

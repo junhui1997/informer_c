@@ -111,11 +111,16 @@ class ctt_kv(nn.Module):
             x_feature = self.cnn_features[i](x_img[:, i, :, :, :])
             x_feature = self.token_learners[i](x_feature)
             x_features[:, i*self.s:(i+1)*self.s, :] = x_feature
+        fusion_type = 'weight'
+        # fusion_type = 'direct'
         if self.args.dual_img:
-            #x_features = x_features[:, :self.args.seq_lenv*self.s, :]+x_features[:, self.args.seq_lenv*self.s:, :]
-            features_2d = x_features[:, :self.args.seq_lenv*self.s, :]
-            features_3d = x_features[:, self.args.seq_lenv*self.s:, :]
-            x_features = self.weighted_sum(features_2d,features_3d)
+            if fusion_type == 'weight':
+                #x_features = x_features[:, :self.args.seq_lenv*self.s, :]+x_features[:, self.args.seq_lenv*self.s:, :]
+                features_2d = x_features[:, :self.args.seq_lenv*self.s, :]
+                features_3d = x_features[:, self.args.seq_lenv*self.s:, :]
+                x_features = self.weighted_sum(features_2d,features_3d)
+            else:
+                pass
         x_kine = self.kine_enc_embedding(x_kine)
         x_kine, kine_attn = self.kine_encoder(x_kine)
         x_fu = torch.cat((x_features,x_kine), dim=1)
