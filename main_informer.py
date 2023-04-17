@@ -25,6 +25,7 @@ parser.add_argument('--c_out', type=int, default=7, help='output size')
 parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
 parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
+parser.add_argument('--ek_layers', type=int, default=2, help='num of encoder layers for kine model when use hybrid model')
 parser.add_argument('--s_layers', type=str, default='3,2,1', help='num of stack encoder layers')
 parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
 parser.add_argument('--factor', type=int, default=5, help='probsparse attn factor')
@@ -117,9 +118,9 @@ Exp = Exp_Informer
 
 for ii in range(args.itr):
     # setting record of experiments
-    setting = '{}_{}_sl{}_dm{}_nh{}_el{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss_{}_s{}_imgs{}'.format(args.model, args.task,
+    setting = '{}_{}_sl{}_dm{}_nh{}_el{}{}_df{}_at{}_fc{}_eb{}_dt{}_mx{}_{}_{}_epo{}_loss_{}_s{}_imgs{}'.format(args.model, args.task,
                 args.seq_len,
-                args.d_model, args.n_heads, args.e_layers, args.d_ff, args.attn, args.factor,
+                args.d_model, args.n_heads, args.e_layers, args.ek_layers, args.d_ff, args.attn, args.factor,
                 args.embed, args.distil, args.mix, args.des, ii, args.train_epochs, args.loss, args.s, args.dual_img)
     args.random_state = int(seed**0.2)*(ii+1)
     exp = Exp(args) # set experiments

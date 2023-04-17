@@ -24,7 +24,7 @@ class ctt_kv(nn.Module):
                  output_attention=False, distil=True, mix=True,
                  device=torch.device('cuda:0'), num_classes=1, args=None):
         super(ctt_kv, self).__init__()
-
+        dropout = 0.05
         self.s = args.s
         self.args =args
         self.cnn_feature = cnn_feature(grad=True)
@@ -57,6 +57,7 @@ class ctt_kv(nn.Module):
         # attention_layer的四个输入attention,d_model,n_head,mix
         # attention块的输入
         # 固定先使用了四层kine
+        ek_layers = args.ek_layers
         self.kine_encoder = Encoder(
             [
                 EncoderLayer(
@@ -66,12 +67,12 @@ class ctt_kv(nn.Module):
                     d_ff,
                     dropout=dropout,
                     activation=activation
-                ) for l in range(e_layers)
+                ) for l in range(ek_layers)
             ],
             [
                 ConvLayer(
                     d_model
-                ) for l in range(4 - 1)
+                ) for l in range(ek_layers-1)
             ],
             norm_layer=torch.nn.LayerNorm(d_model)
         )
@@ -103,7 +104,7 @@ class ctt_kv(nn.Module):
 
     def forward(self, x, enc_self_mask=None):
         x_img, x_kine = x
-        batch_size,seq_len,_,_,_ = x_img.shape
+        batch_size, seq_len, _, _, _ = x_img.shape
         # !!!!!非继承的tensor切记要移动到cuda中去
         x_features = torch.Tensor(batch_size, seq_len*self.s, 512).to(self.device)
         for i in range(seq_len):

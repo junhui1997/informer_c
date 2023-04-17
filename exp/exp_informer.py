@@ -6,6 +6,8 @@ from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 from models.ctt import ctt
 from models.ctt_kv import ctt_kv
+from models.conv_lstm import conv_lstm
+from models.tcn import tcn
 from module_box.all_loss import focal_loss
 from module_box.edit_score_dist import calculate_edit_score
 from module_box.all_plot import plot_color_code
@@ -46,7 +48,10 @@ class Exp_Informer(Exp_Basic):
             'informer':Informer,
             'informerstack':InformerStack,
             'ctt': ctt,
-            'ctt_kv':ctt_kv
+            'ctt_kv': ctt_kv,
+            'conv_lstm': conv_lstm,
+            'tcn': tcn
+
         }
         if self.args.model in model_dict.keys():
             # s_layer的作用是？普通的e_layer是encoder layer的数目，而对于s来说是3,2,1这样的话是怎么看呢，number of stack encoder layer
@@ -257,7 +262,7 @@ class Exp_Informer(Exp_Basic):
                 train_loss.append(loss.item())
 
                 # 每100个iter重新更新一次预估时间
-                if (i+1) % 100==0:
+                if (i+1) % 200==0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     # 从开始到现在的时间/经历了多少iteration
                     speed = (time.time()-time_now)/iter_count
